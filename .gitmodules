@@ -1,0 +1,3 @@
+[submodule "Engine/vendor/raylib"]
+	path = Engine/vendor/raylib
+	url = https://github.com/ThatTanishqTak/raylib.git
