@@ -4,3 +4,7 @@
 [submodule "Engine/vendor/rlImGui"]
 	path = Engine/vendor/rlImGui
 	url = https://github.com/ThatTanishqTak/rlImGui.git
+[submodule "Engine/vendor/imgui"]
+	path = Engine/vendor/imgui
+	url = https://github.com/ThatTanishqTak/imgui.git
+	branch = docking

@@ -3,6 +3,7 @@
 project(Engine LANGUAGES CXX)
 
 add_subdirectory(vendor/raylib)
+add_subdirectory(vendor/rlImGui)
 
 file(GLOB_RECURSE ENGINE_SOURCE
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.h	
@@ -20,6 +21,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+	rlImGui
     raylib
     opengl32
     gdi32
