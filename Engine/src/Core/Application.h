@@ -36,12 +36,13 @@ namespace Engine
 				// Render
 				m_Renderer->BeginFrame();
 
-				// Update
+				// Update phase
 				for (Layer* it_Layer : m_LayerStack)
 				{
 					it_Layer->OnUpdate(l_DeltaTime);
 				}
 
+				// ImGui phase
 				for (Layer* it_Layer : m_LayerStack)
 				{
 					it_Layer->OnImGuiRender();
