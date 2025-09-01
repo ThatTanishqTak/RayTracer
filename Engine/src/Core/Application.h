@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Window/Window.h"
+#include "Core/LayerStack.h"
 #include "Renderer/Renderer.h"
 
 #include <raylib.h>
@@ -12,8 +13,8 @@ namespace Engine
 {
 	struct ApplicationSpecifications
 	{
-		int Width = 1920;
-		int Height = 1080;
+		int Width = 1080;
+		int Height = 720;
 		const char* Title = "Raylib-Application";
 	};
 
@@ -23,20 +24,33 @@ namespace Engine
 		Application(const ApplicationSpecifications& specifications);
 		~Application();
 
+		void PushLayer(Layer* layer);
+		void PushOverlay(Layer* layer);
+
 		virtual void Run()
 		{
 			while (!m_Window->ShouldClose())
 			{
+				float l_DeltaTime = GetFrameTime();
+
+				// Render
 				m_Renderer->BeginFrame();
 
-				DrawText(TextFormat("FPS: %d", GetFPS()), 0, 0, 24, RED);
+				for (Layer* it_Layer : m_LayerStack)
+				{
+					it_Layer->OnUpdate(l_DeltaTime);
+				}
 
 				m_Renderer->EndFrame();
+
+				// Update
 			}
 		}
 
 	private:
 		std::unique_ptr<Window> m_Window;
-		std::unique_ptr<Renderer> m_Renderer;
+		std::shared_ptr<Renderer> m_Renderer;
+
+		LayerStack m_LayerStack;
 	};
 }

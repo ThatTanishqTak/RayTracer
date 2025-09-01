@@ -1,10 +1,21 @@
 #pragma once
 
-#include <iostream>
+#include "Core/Layer.h"
 
-class SandboxLayer
+#include "Renderer/Renderer.h"
+
+class SandboxLayer : public Engine::Layer
 {
 public:
 	SandboxLayer();
-	~SandboxLayer();
+	virtual ~SandboxLayer() = default;
+
+	virtual void OnAttach() override;
+	virtual void OnDetach() override;
+
+	virtual void OnUpdate(float deltaTime) override;
+	virtual void OnImGuiRender() override;
+
+private:
+
 };

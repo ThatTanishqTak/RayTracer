@@ -7,13 +7,15 @@ class Sandbox : public Engine::Application
 public:
 	Sandbox(const Engine::ApplicationSpecifications& specifications) : Engine::Application(specifications)
 	{
-
+		PushLayer(new SandboxLayer());
 	}
 };
 
 Engine::Application* Engine::CreateApplication()
 {
 	ApplicationSpecifications l_Specifications;
+	l_Specifications.Width = 1920;
+	l_Specifications.Height = 1080;
 	l_Specifications.Title = "RayTracer";
 
 	return new Sandbox(l_Specifications);
