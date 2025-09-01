@@ -1,37 +1,42 @@
+#pragma once
+
+#include "Window/Window.h"
 #include "Renderer/Renderer.h"
 
 #include <raylib.h>
 
+#include <sstream>
 #include <memory>
 
 namespace Engine
 {
+	struct ApplicationSpecifications
+	{
+		int Width = 1920;
+		int Height = 1080;
+		const char* Title = "Raylib-Application";
+	};
+
 	class Application
 	{
 	public:
-		Application();
+		Application(const ApplicationSpecifications& specifications);
 		~Application();
 
 		virtual void Run()
 		{
-			InitWindow(m_Width, m_Height, m_Title);
-			SetTargetFPS(60);
-
-			while (!WindowShouldClose())
+			while (!m_Window->ShouldClose())
 			{
-				BeginDrawing();
+				m_Renderer->BeginFrame();
 
-				m_Renderer->DrawFrame();
-			
-				EndDrawing();
+				DrawText(TextFormat("FPS: %d", GetFPS()), 0, 0, 24, RED);
+
+				m_Renderer->EndFrame();
 			}
 		}
 
 	private:
-		int m_Width = 1920;
-		int m_Height = 1080;
-		const char* m_Title = "RayTracer";
-
+		std::unique_ptr<Window> m_Window;
 		std::unique_ptr<Renderer> m_Renderer;
 	};
 }

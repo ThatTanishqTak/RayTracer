@@ -1,5 +1,7 @@
 #include "Renderer/Renderer.h"
 
+#include <raylib.h>
+
 namespace Engine
 {
 	bool Renderer::Initialize()
@@ -12,8 +14,14 @@ namespace Engine
 
 	}
 
-	void Renderer::DrawFrame()
+	void Renderer::BeginFrame()
 	{
-
+		BeginDrawing();
+		ClearBackground(BLACK);
+	}
+	
+	void Renderer::EndFrame()
+	{
+		EndDrawing();
 	}
 }

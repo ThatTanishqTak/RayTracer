@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 
 namespace Engine
@@ -8,6 +10,7 @@ namespace Engine
 		bool Initialize();
 		void Shutdown();
 
-		void DrawFrame();
+		void BeginFrame();
+		void EndFrame();
 	};
 }
