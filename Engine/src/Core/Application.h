@@ -36,14 +36,18 @@ namespace Engine
 				// Render
 				m_Renderer->BeginFrame();
 
+				// Update
 				for (Layer* it_Layer : m_LayerStack)
 				{
 					it_Layer->OnUpdate(l_DeltaTime);
 				}
 
-				m_Renderer->EndFrame();
+				for (Layer* it_Layer : m_LayerStack)
+				{
+					it_Layer->OnImGuiRender();
+				}
 
-				// Update
+				m_Renderer->EndFrame();
 			}
 		}
 

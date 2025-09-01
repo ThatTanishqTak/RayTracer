@@ -5,6 +5,21 @@ project(Engine LANGUAGES CXX)
 add_subdirectory(vendor/raylib)
 add_subdirectory(vendor/rlImGui)
 
+file(GLOB IMGUI_SOURCE
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui_draw.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui_tables.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui_widgets.cpp
+)
+
+add_library(imgui STATIC
+        ${IMGUI_SOURCE}
+)
+
+target_include_directories(imgui PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui
+)
+
 file(GLOB_RECURSE ENGINE_SOURCE
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.h	
 	${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp	
@@ -18,9 +33,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>	
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/raylib/src>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/rlImGui>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui>
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
+	imgui
 	rlImGui
     raylib
     opengl32
