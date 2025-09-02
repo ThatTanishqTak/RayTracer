@@ -13,6 +13,7 @@ namespace Engine
 		virtual void OnAttach() {}
 		virtual void OnDetach() {}
 		virtual void OnUpdate(float deltaTime) {}
+		virtual void OnSceneRender() {}
 		virtual void OnImGuiRender() {}
 		virtual void OnEvent() {}
 

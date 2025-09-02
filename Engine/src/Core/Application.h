@@ -5,6 +5,7 @@
 #include "Renderer/Renderer.h"
 
 #include <raylib.h>
+#include <imgui.h>
 
 #include <sstream>
 #include <memory>
@@ -33,13 +34,18 @@ namespace Engine
 			{
 				float l_DeltaTime = GetFrameTime();
 
-				// Render
-				m_Renderer->BeginFrame();
-
 				// Update phase
 				for (Layer* it_Layer : m_LayerStack)
 				{
 					it_Layer->OnUpdate(l_DeltaTime);
+				}
+
+				// Render
+				m_Renderer->BeginFrame();
+
+				for (Layer* it_Layer : m_LayerStack)
+				{
+					it_Layer->OnSceneRender();
 				}
 
 				// ImGui phase

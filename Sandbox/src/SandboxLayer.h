@@ -15,7 +15,9 @@ public:
 
 	virtual void OnUpdate(float deltaTime) override;
 	virtual void OnImGuiRender() override;
+	virtual void OnSceneRender() override;
 
 private:
+	Engine::Renderer m_Render;
 
 };
