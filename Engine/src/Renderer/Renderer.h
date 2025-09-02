@@ -13,6 +13,9 @@ namespace Engine
 		void BeginFrame();
 		void EndFrame();
 
+		void Begin3D(Camera3D camera);
+		void End3D();
+
 		Camera3D* GetCamera();
 
 	private:

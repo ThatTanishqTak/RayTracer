@@ -28,14 +28,22 @@ namespace Engine
 	void Renderer::BeginFrame()
 	{
 		BeginDrawing();
-		BeginMode3D(m_Camera);
 		ClearBackground(BLACK);
 	}
 	
 	void Renderer::EndFrame()
 	{
-		EndMode3D();
 		EndDrawing();
+	}
+
+	void Renderer::Begin3D(Camera3D camera)
+	{
+		BeginMode3D(camera);
+	}
+
+	void Renderer::End3D()
+	{
+		EndMode3D();
 	}
 
 	Camera3D* Renderer::GetCamera()

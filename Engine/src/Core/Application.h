@@ -32,35 +32,33 @@ namespace Engine
 
 		virtual void Run()
 		{
+			// Main loop
 			while (!m_Window->ShouldClose())
 			{
 				float l_DeltaTime = GetFrameTime();
+				
+				// Render
+				m_Renderer->BeginFrame();
+				{
+					// Scene phase
+					for (Layer* it_Layer : m_LayerStack)
+					{
+						it_Layer->OnSceneRender();
+					}
+
+					// ImGui phase
+					for (Layer* it_Layer : m_LayerStack)
+					{
+						it_Layer->OnImGuiRender();
+					}
+				}
+				m_Renderer->EndFrame();
 
 				// Update phase
 				for (Layer* it_Layer : m_LayerStack)
 				{
 					it_Layer->OnUpdate(l_DeltaTime);
 				}
-
-				// Render
-				BeginDrawing();
-				ClearBackground(BLACK);
-				BeginMode3D(*m_Renderer->GetCamera());
-
-				for (Layer* it_Layer : m_LayerStack)
-				{
-					it_Layer->OnSceneRender();
-				}
-
-				EndMode3D();
-
-				// ImGui phase
-				for (Layer* it_Layer : m_LayerStack)
-				{
-					it_Layer->OnImGuiRender();
-				}
-
-				EndDrawing();
 			}
 		}
 
