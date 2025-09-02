@@ -7,7 +7,7 @@
 class SandboxLayer : public Engine::Layer
 {
 public:
-	SandboxLayer();
+	SandboxLayer(Engine::Renderer* renderer);
 	virtual ~SandboxLayer() = default;
 
 	virtual void OnAttach() override;
@@ -18,6 +18,6 @@ public:
 	virtual void OnSceneRender() override;
 
 private:
-	Engine::Renderer m_Render;
+	Engine::Renderer* m_Renderer = nullptr;
 
 };

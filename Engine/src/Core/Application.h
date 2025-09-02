@@ -28,6 +28,8 @@ namespace Engine
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* layer);
 
+		Renderer* GetRenderer() const;
+
 		virtual void Run()
 		{
 			while (!m_Window->ShouldClose())
@@ -41,12 +43,16 @@ namespace Engine
 				}
 
 				// Render
-				m_Renderer->BeginFrame();
+				BeginDrawing();
+				ClearBackground(BLACK);
+				BeginMode3D(*m_Renderer->GetCamera());
 
 				for (Layer* it_Layer : m_LayerStack)
 				{
 					it_Layer->OnSceneRender();
 				}
+
+				EndMode3D();
 
 				// ImGui phase
 				for (Layer* it_Layer : m_LayerStack)
@@ -54,7 +60,7 @@ namespace Engine
 					it_Layer->OnImGuiRender();
 				}
 
-				m_Renderer->EndFrame();
+				EndDrawing();
 			}
 		}
 

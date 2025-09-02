@@ -36,4 +36,9 @@ namespace Engine
 		m_LayerStack.PopOverlay(overlay);
 		overlay->OnAttach();
 	}
+
+	Renderer* Application::GetRenderer() const
+	{
+		return m_Renderer.get();
+	}
 }

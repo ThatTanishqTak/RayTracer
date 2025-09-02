@@ -7,7 +7,7 @@ class Sandbox : public Engine::Application
 public:
 	Sandbox(const Engine::ApplicationSpecifications& specifications) : Engine::Application(specifications)
 	{
-		PushLayer(new SandboxLayer());
+		PushLayer(new SandboxLayer(GetRenderer()));
 	}
 };
 

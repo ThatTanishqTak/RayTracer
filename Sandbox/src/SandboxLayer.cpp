@@ -4,7 +4,7 @@
 #include <rlImGui.h>
 #include <imgui.h>
 
-SandboxLayer::SandboxLayer() : Engine::Layer("SandboxLayer")
+SandboxLayer::SandboxLayer(Engine::Renderer* renderer) : Engine::Layer("SandboxLayer"), m_Renderer(renderer)
 {
 
 }
@@ -21,19 +21,18 @@ void SandboxLayer::OnDetach()
 
 void SandboxLayer::OnUpdate(float deltaTime)
 {
-	if (IsKeyDown(KEY_TAB))
-	{
-		UpdateCameraPro(m_Render.GetCamera(), { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f, 1.0f }, 1.0f);
-	}
+	UpdateCamera(m_Renderer->GetCamera(), CAMERA_FREE);
 }
 
 void SandboxLayer::OnImGuiRender()
 {
-	ImGui::Text("WHAT");
+	rlImGuiBegin();
+
+	rlImGuiEnd();
 }
 
 void SandboxLayer::OnSceneRender()
 {
-	DrawGrid(100, 10.0f);
+	DrawGrid(10000, 10.0f);
 	DrawCube({ 0.0f, 0.0f, 0.0f }, 1.0f, 1.0f, 1.0f, RED);
 }

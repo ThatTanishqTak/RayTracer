@@ -28,16 +28,12 @@ namespace Engine
 	void Renderer::BeginFrame()
 	{
 		BeginDrawing();
-		rlImGuiBegin();
-		BeginMode3D(*GetCamera());
+		BeginMode3D(m_Camera);
 		ClearBackground(BLACK);
-
-		TraceLog(LOG_INFO, TextFormat("%d, %d, %d", m_Camera.position.x, m_Camera.position.y, m_Camera.position.z));
 	}
 	
 	void Renderer::EndFrame()
 	{
-		rlImGuiEnd();
 		EndMode3D();
 		EndDrawing();
 	}
