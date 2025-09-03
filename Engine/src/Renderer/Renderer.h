@@ -16,9 +16,13 @@ namespace Engine
 		void Begin3D(Camera3D camera);
 		void End3D();
 
+		void RenderImage(const Color* buffer, int width, int height);
+
 		Camera3D* GetCamera();
+		const Texture2D& GetFrameTexture() const;
 
 	private:
 		Camera3D m_Camera = { 0 };
+		Texture2D m_FrameTexture = { 0 };
 	};
 }
