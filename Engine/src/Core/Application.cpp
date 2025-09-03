@@ -1,22 +1,28 @@
 #include "Core/Application.h"
-
-#include <iostream>
+#include "Utilities/Utilities.h"
 
 namespace Engine
 {
 	Application::Application(const ApplicationSpecifications& specifications)
 	{
+
+		RAY_CORE_INFO("-------INITALIZING APPLICATION-------");
+
+		SetTraceLogLevel(LOG_NONE);
+
 		m_Window = std::make_unique<Window>();
 		if (!m_Window->Initialize(specifications.Width, specifications.Height, specifications.Title))
 		{
-			std::cout << "Failed to initialize window" << std::endl;
+			RAY_CORE_ERROR("Failed to initialize window");
 		}
 
 		m_Renderer = std::make_shared<Renderer>();
 		if (!m_Renderer->Initialize())
 		{
-			std::cout << "Failed to initialize renderer" << std::endl;
+			RAY_CORE_ERROR("Failed to initialize renderer");
 		}
+
+		RAY_CORE_INFO("-------APPLICATION INITIALIZED-------");
 	}
 
 	Application::~Application()
