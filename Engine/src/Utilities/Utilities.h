@@ -31,6 +31,7 @@ namespace Engine
 		};
 	}
 
+#if _DEBUG
 #define RAY_ASSERT(condition, message) ::Engine::Utilities::Logging::Assert(condition, message)
 
 #define RAY_CORE_INFO(message) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CORE, message)
@@ -40,4 +41,15 @@ namespace Engine
 #define RAY_INFO(message) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CLIENT, message)
 #define RAY_WARNING(message) ::Engine::Utilities::Logging::LogWarning(::Engine::Utilities::Logging::LogType::CLIENT, message)
 #define RAY_ERROR(message) ::Engine::Utilities::Logging::LogError(::Engine::Utilities::Logging::LogType::CLIENT, message)
+#else
+#define RAY_ASSERT(condition, message)
+	#define RAY_CORE_INFO(message)
+#define RAY_CORE_WARNING(message)
+#define RAY_CORE_ERROR(message)
+
+#define RAY_INFO(message)
+#define RAY_WARNING(message)
+#define RAY_ERROR(message)
+#endif
+
 }
