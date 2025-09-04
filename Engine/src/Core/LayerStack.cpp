@@ -1,5 +1,7 @@
 #include "Core/LayerStack.h"
 
+#include <algorithm>
+
 namespace Engine
 {
     LayerStack::~LayerStack()

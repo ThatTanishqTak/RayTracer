@@ -4,6 +4,7 @@
 #include "Tracer/RayTracer.h"
 #include "Tracer/Ray.h"
 #include "Tracer/Sphere.h"
+#include "Tracer/BVHNode.h"
 #include "Utilities/Utilities.h"
 
 #include <raymath.h>
@@ -111,6 +112,9 @@ void SandboxLayer::RenderScene(int width, int height)
     l_World.emplace_back(Vector3{ -1.0f, 0.0f, -1.0f }, 0.5f, a_MaterialLeft);
     l_World.emplace_back(Vector3{ 1.0f, 0.0f, -1.0f }, 0.5f, a_MaterialRight);
 
+    // Build a BVH from the scene spheres to accelerate intersection tests.
+    Engine::BVHNode l_Bvh(l_World, 0, l_World.size());
+
     m_FrameBuffer.resize(l_ImageWidth * l_ImageHeight);
 
     std::atomic<float> l_TotalRenderTime = 0.0f;
@@ -129,7 +133,7 @@ void SandboxLayer::RenderScene(int width, int height)
         int l_StartY = static_cast<int>(it_Thread) * l_RowsPerThread;
         int l_EndY = (it_Thread == l_ThreadCount - 1) ? l_ImageHeight : l_StartY + l_RowsPerThread;
 
-        l_ThreadPool.emplace_back([=, this, &l_TotalRenderTime, &l_World]()
+        l_ThreadPool.emplace_back([=, this, &l_TotalRenderTime, &l_Bvh]()
             {
                 std::mt19937 l_Generator(std::random_device{}());
                 auto a_ThreadStart = std::chrono::high_resolution_clock::now();
@@ -147,7 +151,7 @@ void SandboxLayer::RenderScene(int width, int height)
                             Vector3 l_Direction = Vector3Add(Vector3Add(l_LowerLeftCorner, Vector3Scale(l_Horizontal, l_U)), Vector3Scale(l_Vertical, l_V));
                             l_Direction = Vector3Subtract(l_Direction, l_Origin);
                             Engine::Ray l_Ray(l_Origin, l_Direction);
-                            Vector3 l_SampleColor = Engine::RayColor(l_Ray, l_World, l_MaxDepth);
+                            Vector3 l_SampleColor = Engine::RayColor(l_Ray, l_Bvh, l_MaxDepth);
 
                             l_Color = Vector3Add(l_Color, l_SampleColor);
                         }

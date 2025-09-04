@@ -1,5 +1,6 @@
 #include "Tracer/Sphere.h"
 #include "Renderer/Material.h"
+#include "Tracer/BoundingBox.h"
 
 #include <raymath.h>
 
@@ -25,6 +26,15 @@ namespace Engine
     std::shared_ptr<Material> Sphere::GetMaterial() const
     {
         return m_Material;
+    }
+
+    BoundingBox Sphere::GetBoundingBox() const
+    {
+        // The bounding box of a sphere is centered on the sphere with extents equal to the radius.
+        Vector3 l_RadiusVec{ m_Radius, m_Radius, m_Radius };
+        BoundingBox l_Box(Vector3Subtract(m_Center, l_RadiusVec), Vector3Add(m_Center, l_RadiusVec));
+
+        return l_Box;
     }
 
     bool RayIntersectsSphere(const Ray& ray, const Sphere& sphere, float targetMinimum, float targetMaximim, HitRecord& hitRecord)

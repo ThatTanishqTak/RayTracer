@@ -7,7 +7,7 @@
 
 namespace Engine
 {
-    Vector3 RayColor(const Ray& ray, const std::vector<Sphere>& world, int depth)
+    Vector3 RayColor(const Ray& ray, const BVHNode& world, int depth)
     {
         // Limit recursion to avoid infinite bounces.
         if (depth <= 0)
@@ -18,22 +18,7 @@ namespace Engine
         }
 
         HitRecord l_Record{};
-        HitRecord l_TempRecord{};
-        bool l_HitAnything = false;
-        float l_ClosestSoFar = std::numeric_limits<float>::max();
-
-        // Check the ray against every object in the world and keep the closest hit.
-        for (const Sphere& it_Sphere : world)
-        {
-            if (RayIntersectsSphere(ray, it_Sphere, 0.001f, l_ClosestSoFar, l_TempRecord))
-            {
-                l_HitAnything = true;
-                l_ClosestSoFar = l_TempRecord.m_Target;
-                l_Record = l_TempRecord;
-            }
-        }
-
-        if (l_HitAnything)
+        if (world.Hit(ray, 0.001f, std::numeric_limits<float>::max(), l_Record))
         {
             Ray l_Scattered;
             Vector3 l_Attenuation{};

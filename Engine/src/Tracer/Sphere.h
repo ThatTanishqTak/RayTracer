@@ -2,6 +2,7 @@
 
 #include "Tracer/Ray.h"
 #include "Tracer/HitRecord.h"
+#include "Tracer/BoundingBox.h"
 
 #include <raylib.h>
 #include <memory>
@@ -23,6 +24,9 @@ namespace Engine
         float GetRadius() const;
         /**\brief Retrieve the material associated with the sphere.*/
         std::shared_ptr<Material> GetMaterial() const;
+
+        /**\brief Compute an axis aligned bounding box for the sphere.*/
+        BoundingBox GetBoundingBox() const;
 
     private:
         Vector3 m_Center{};
