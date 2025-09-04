@@ -15,15 +15,16 @@
 #include <random>
 #include <chrono>
 #include <vector>
+#include <thread>
+#include <atomic>
 
 namespace
 {
-    // Generate a random float in the range [0,1).
-    float RandomFloat()
+    // Generate a random float in the range [0,1) using the supplied generator.
+    float RandomFloat(std::mt19937& generator)
     {
-        static std::uniform_real_distribution<float> s_Distribution(0.0f, 1.0f);
-        static std::mt19937 s_Generator(std::random_device{}());
-        float l_Value = s_Distribution(s_Generator);
+        std::uniform_real_distribution<float> l_Distribution(0.0f, 1.0f);
+        float l_Value = l_Distribution(generator);
 
         return l_Value;
     }
@@ -112,41 +113,68 @@ void SandboxLayer::RenderScene(int width, int height)
 
     m_FrameBuffer.resize(l_ImageWidth * l_ImageHeight);
 
-    auto a_Start = std::chrono::high_resolution_clock::now();
-
-    // Ray trace each pixel with multiple samples for anti-aliasing.
-    for (int it_Y = l_ImageHeight - 1; it_Y >= 0; --it_Y)
+    std::atomic<float> l_TotalRenderTime = 0.0f;
+    unsigned int l_ThreadCount = std::thread::hardware_concurrency();
+    if (l_ThreadCount == 0)
     {
-        for (int it_X = 0; it_X < l_ImageWidth; ++it_X)
-        {
-            Vector3 l_Color{ 0.0f, 0.0f, 0.0f };
-            for (int it_Sample = 0; it_Sample < l_SamplesPerPixel; ++it_Sample)
+        l_ThreadCount = 1;
+    }
+    int l_RowsPerThread = l_ImageHeight / static_cast<int>(l_ThreadCount);
+
+    std::vector<std::jthread> l_ThreadPool;
+    l_ThreadPool.reserve(l_ThreadCount);
+
+    for (unsigned int it_Thread = 0; it_Thread < l_ThreadCount; ++it_Thread)
+    {
+        int l_StartY = static_cast<int>(it_Thread) * l_RowsPerThread;
+        int l_EndY = (it_Thread == l_ThreadCount - 1) ? l_ImageHeight : l_StartY + l_RowsPerThread;
+
+        l_ThreadPool.emplace_back([=, this, &l_TotalRenderTime, &l_World]()
             {
-                float l_U = (static_cast<float>(it_X) + RandomFloat()) / (l_ImageWidth - 1);
-                float l_V = (static_cast<float>(it_Y) + RandomFloat()) / (l_ImageHeight - 1);
+                std::mt19937 l_Generator(std::random_device{}());
+                auto a_ThreadStart = std::chrono::high_resolution_clock::now();
 
-                Vector3 l_Direction = Vector3Add(Vector3Add(l_LowerLeftCorner, Vector3Scale(l_Horizontal, l_U)), Vector3Scale(l_Vertical, l_V));
-                l_Direction = Vector3Subtract(l_Direction, l_Origin);
-                Engine::Ray l_Ray(l_Origin, l_Direction);
-                Vector3 l_SampleColor = Engine::RayColor(l_Ray, l_World, l_MaxDepth);
+                for (int it_Y = l_EndY - 1; it_Y >= l_StartY; --it_Y)
+                {
+                    for (int it_X = 0; it_X < l_ImageWidth; ++it_X)
+                    {
+                        Vector3 l_Color{ 0.0f, 0.0f, 0.0f };
+                        for (int it_Sample = 0; it_Sample < l_SamplesPerPixel; ++it_Sample)
+                        {
+                            float l_U = (static_cast<float>(it_X) + RandomFloat(l_Generator)) / (l_ImageWidth - 1);
+                            float l_V = (static_cast<float>(it_Y) + RandomFloat(l_Generator)) / (l_ImageHeight - 1);
 
-                l_Color = Vector3Add(l_Color, l_SampleColor);
-            }
+                            Vector3 l_Direction = Vector3Add(Vector3Add(l_LowerLeftCorner, Vector3Scale(l_Horizontal, l_U)), Vector3Scale(l_Vertical, l_V));
+                            l_Direction = Vector3Subtract(l_Direction, l_Origin);
+                            Engine::Ray l_Ray(l_Origin, l_Direction);
+                            Vector3 l_SampleColor = Engine::RayColor(l_Ray, l_World, l_MaxDepth);
 
-            // Average all samples and apply gamma correction.
-            l_Color = Vector3Scale(l_Color, 1.0f / static_cast<float>(l_SamplesPerPixel));
-            l_Color.x = sqrtf(l_Color.x);
-            l_Color.y = sqrtf(l_Color.y);
-            l_Color.z = sqrtf(l_Color.z);
+                            l_Color = Vector3Add(l_Color, l_SampleColor);
+                        }
 
-            int l_Index = it_Y * l_ImageWidth + it_X;
-            m_FrameBuffer[l_Index] = { static_cast<unsigned char>(255.999f * l_Color.x), static_cast<unsigned char>(255.999f * l_Color.y),
-                static_cast<unsigned char>(255.999f * l_Color.z), 255 };
-        }
+                        l_Color = Vector3Scale(l_Color, 1.0f / static_cast<float>(l_SamplesPerPixel));
+                        l_Color.x = sqrtf(l_Color.x);
+                        l_Color.y = sqrtf(l_Color.y);
+                        l_Color.z = sqrtf(l_Color.z);
+
+                        int l_Index = it_Y * l_ImageWidth + it_X;
+                        m_FrameBuffer[l_Index] = { static_cast<unsigned char>(255.999f * l_Color.x), static_cast<unsigned char>(255.999f * l_Color.y),
+                            static_cast<unsigned char>(255.999f * l_Color.z), 255 };
+                    }
+                }
+
+                auto a_ThreadEnd = std::chrono::high_resolution_clock::now();
+                float l_Duration = std::chrono::duration<float, std::milli>(a_ThreadEnd - a_ThreadStart).count();
+                l_TotalRenderTime.fetch_add(l_Duration, std::memory_order_relaxed);
+            });
     }
 
-    auto a_End = std::chrono::high_resolution_clock::now();
-    m_RenderTime = std::chrono::duration<float, std::milli>(a_End - a_Start).count();
+    for (std::jthread& it_Thread : l_ThreadPool)
+    {
+        it_Thread.join();
+    }
+
+    m_RenderTime = l_TotalRenderTime.load();
 
     // Upload the finished image to the GPU for display.
     m_Renderer->ResizeFrameTexture(l_ImageWidth, l_ImageHeight);
