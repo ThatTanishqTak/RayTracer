@@ -1,7 +1,7 @@
 #include "Tracer/BVHNode.h"
 
 #include <algorithm>
-#include <cstdlib>
+#include <random>
 #include <raymath.h>
 
 namespace Engine
@@ -21,6 +21,11 @@ namespace Engine
         return l_Box;
     }
 
+    // Static random engine seeded with a fixed value for reproducible BVH construction.
+    // The seed can be changed in the future to introduce variability if desired.
+    static std::mt19937 s_RandomEngine{ 0 };
+    static std::uniform_int_distribution<int> s_AxisDistribution(0, 2);
+
     BVHNode::BVHNode(std::vector<Sphere>& spheres, size_t start, size_t end)
     {
         // Build the tree by recursively partitioning the list of spheres.
@@ -35,8 +40,8 @@ namespace Engine
             return;
         }
 
-        // Choose axis randomly for splitting.
-        int l_Axis = rand() % 3;
+        // Choose axis randomly for splitting using the deterministic engine.
+        int l_Axis = s_AxisDistribution(s_RandomEngine);
         auto a_Comparator = [l_Axis](const Sphere& a_SphereA, const Sphere& a_SphereB)
             {
                 // Compare sphere centers along the chosen axis.
@@ -81,14 +86,14 @@ namespace Engine
         if (l_HitLeft)
         {
             record = l_LeftRecord;
-        
+
             return true;
         }
 
         if (l_HitRight)
         {
             record = l_RightRecord;
-        
+
             return true;
         }
 
