@@ -4,14 +4,17 @@
 #include "Tracer/RayTracer.h"
 #include "Tracer/Ray.h"
 #include "Tracer/Sphere.h"
+#include "Utilities/Utilities.h"
 
 #include <raymath.h>
 #include <rlImGui.h>
 #include <imgui.h>
 
+#include <iostream>
 #include <vector>
 #include <memory>
 #include <random>
+#include <chrono>
 
 namespace
 {
@@ -27,13 +30,14 @@ namespace
 
 SandboxLayer::SandboxLayer(Engine::Renderer* renderer) : Engine::Layer("SandboxLayer"), m_Renderer(renderer)
 {
+
 }
 
 void SandboxLayer::OnAttach()
 {
-    float l_AspectRatio = 16.0f / 9.0f;
-    int l_ImageWidth = 400;
-    int l_ImageHeight = static_cast<int>(l_ImageWidth / l_AspectRatio);
+    int l_ImageWidth = GetScreenWidth();
+    int l_ImageHeight = GetScreenHeight();
+    float l_AspectRatio = l_ImageWidth / l_ImageHeight;
     int l_SamplesPerPixel = 10;
     int l_MaxDepth = 10;
 
@@ -44,7 +48,7 @@ void SandboxLayer::OnAttach()
 
     Vector3 l_Horizontal{ l_ViewportWidth, 0.0f, 0.0f };
     Vector3 l_Vertical{ 0.0f, l_ViewportHeight, 0.0f };
-    Vector3 l_LowerLeftCorner = Vector3Subtract(Vector3Subtract(Vector3Subtract(l_Origin, Vector3Scale(l_Horizontal, 0.5f)), Vector3Scale(l_Vertical, 0.5f)), 
+    Vector3 l_LowerLeftCorner = Vector3Subtract(Vector3Subtract(Vector3Subtract(l_Origin, Vector3Scale(l_Horizontal, 0.5f)), Vector3Scale(l_Vertical, 0.5f)),
         Vector3{ 0.0f, 0.0f, l_FocalLength });
 
     auto a_MaterialGround = std::make_shared<Engine::Lambertian>(Vector3{ 0.8f, 0.8f, 0.0f });
@@ -60,19 +64,23 @@ void SandboxLayer::OnAttach()
 
     std::vector<Color> l_FrameBuffer(l_ImageWidth * l_ImageHeight);
 
+    // Start timing
+    auto start = std::chrono::high_resolution_clock::now();
+
     for (int it_Y = l_ImageHeight - 1; it_Y >= 0; --it_Y)
     {
         for (int it_X = 0; it_X < l_ImageWidth; ++it_X)
         {
             Vector3 l_Color{ 0.0f, 0.0f, 0.0f };
-            for (int it_Sample = 0; it_Sample < l_SamplesPerPixel; ++it_Sample)
-            {
+            for (int it_Sample = 0; it_Sample < l_SamplesPerPixel; ++it_Sample) {
                 float l_U = (static_cast<float>(it_X) + RandomFloat()) / (l_ImageWidth - 1);
                 float l_V = (static_cast<float>(it_Y) + RandomFloat()) / (l_ImageHeight - 1);
+                
                 Vector3 l_Direction = Vector3Add(Vector3Add(l_LowerLeftCorner, Vector3Scale(l_Horizontal, l_U)), Vector3Scale(l_Vertical, l_V));
                 l_Direction = Vector3Subtract(l_Direction, l_Origin);
                 Engine::Ray l_Ray(l_Origin, l_Direction);
                 Vector3 l_SampleColor = Engine::RayColor(l_Ray, l_World, l_MaxDepth);
+                
                 l_Color = Vector3Add(l_Color, l_SampleColor);
             }
 
@@ -80,11 +88,16 @@ void SandboxLayer::OnAttach()
             l_Color.x = sqrtf(l_Color.x);
             l_Color.y = sqrtf(l_Color.y);
             l_Color.z = sqrtf(l_Color.z);
+
             int l_Index = it_Y * l_ImageWidth + it_X;
-            l_FrameBuffer[l_Index] = { static_cast<unsigned char>(255.999f * l_Color.x), static_cast<unsigned char>(255.999f * l_Color.y), 
+            l_FrameBuffer[l_Index] = { static_cast<unsigned char>(255.999f * l_Color.x), static_cast<unsigned char>(255.999f * l_Color.y),
                 static_cast<unsigned char>(255.999f * l_Color.z), 255 };
         }
     }
+
+    // End timing and calculate duration
+    auto end = std::chrono::high_resolution_clock::now();
+    m_RenderTime = std::chrono::duration<float, std::milli>(end - start).count();
 
     m_Renderer->RenderImage(l_FrameBuffer.data(), l_ImageWidth, l_ImageHeight);
 }
@@ -102,6 +115,19 @@ void SandboxLayer::OnUpdate(float deltaTime)
 void SandboxLayer::OnImGuiRender()
 {
     rlImGuiBegin();
+
+    // Create the "Render Stats" window and ensure it stays on top
+    ImGui::Begin("Render Stats", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Text("Render Time: %.2f ms", m_RenderTime);
+    ImGui::End();
+
+    // Force the "Render Stats" window to stay on top by setting focus
+    ImGui::SetWindowFocus("Render Stats");
+
+    // Optional: Add another window to demonstrate the "Render Stats" stays on top
+    ImGui::Begin("Another Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Text("This is a test window to show layer order");
+    ImGui::End();
 
     rlImGuiEnd();
 }

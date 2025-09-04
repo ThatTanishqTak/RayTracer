@@ -21,4 +21,5 @@ public:
 
 private:
     Engine::Renderer* m_Renderer = nullptr;
+    float m_RenderTime = 0.0f; // Added to store render time
 };
