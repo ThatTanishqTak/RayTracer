@@ -5,32 +5,36 @@
 
 namespace Engine
 {
-	bool Window::Initialize(int width, int height, const char* title)
-	{
-		RAY_CORE_INFO("Initializing window");
+    bool Window::Initialize(int width, int height, const char* title)
+    {
+        RAY_CORE_INFO("Initializing window");
 
-		SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
-		InitWindow(width, height, title);
-		
-		SetExitKey(KEY_NULL);
-		MaximizeWindow();
+        // Configure the window and create it via raylib.
+        SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
+        InitWindow(width, height, title);
 
-		RAY_CORE_INFO("Window initialized");
+        // Disable default exit key and maximize for better user experience.
+        SetExitKey(KEY_NULL);
+        MaximizeWindow();
 
-		return true;
-	}
+        RAY_CORE_INFO("Window initialized");
 
-	void Window::Shutdown()
-	{
-		RAY_CORE_INFO("Shuting down window");
+        return true;
+    }
 
-		CloseWindow();
+    void Window::Shutdown()
+    {
+        RAY_CORE_INFO("Shuting down window");
 
-		RAY_CORE_INFO("Window shutdown complete");
-	}
+        // Close the window and clean up internal raylib resources.
+        CloseWindow();
 
-	bool Window::ShouldClose() const
-	{
-		return WindowShouldClose();
-	}
+        RAY_CORE_INFO("Window shutdown complete");
+    }
+
+    bool Window::ShouldClose() const
+    {
+        // Query raylib for the close flag.
+        return WindowShouldClose();
+    }
 }
