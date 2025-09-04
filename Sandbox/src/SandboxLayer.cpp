@@ -21,11 +21,14 @@
 
 namespace
 {
+    // Thread-local generator and distribution for sampling.
+    thread_local std::mt19937 s_Generator(std::random_device{}());
+    thread_local std::uniform_real_distribution<float> s_Distribution(0.0f, 1.0f);
+
     // Generate a random float in the range [0,1) using the supplied generator.
     float RandomFloat(std::mt19937& generator)
     {
-        std::uniform_real_distribution<float> l_Distribution(0.0f, 1.0f);
-        float l_Value = l_Distribution(generator);
+        float l_Value = s_Distribution(generator);
 
         return l_Value;
     }
@@ -135,7 +138,7 @@ void SandboxLayer::RenderScene(int width, int height)
 
         l_ThreadPool.emplace_back([=, this, &l_TotalRenderTime, &l_Bvh]()
             {
-                std::mt19937 l_Generator(std::random_device{}());
+                std::mt19937& l_Generator = s_Generator; // Reuse thread-local RNG
                 auto a_ThreadStart = std::chrono::high_resolution_clock::now();
 
                 for (int it_Y = l_EndY - 1; it_Y >= l_StartY; --it_Y)

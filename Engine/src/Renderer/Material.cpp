@@ -7,22 +7,24 @@
 
 namespace
 {
+    // Thread-local generator and distribution avoid contention across threads.
+    thread_local std::mt19937 s_Generator(std::random_device{}());
+    thread_local std::uniform_real_distribution<float> s_Distribution(0.0f, 1.0f);
+
     // Generate a random float in the range [0,1).
-    float RandomFloat()
+    float RandomFloat(std::mt19937& generator)
     {
-        static std::uniform_real_distribution<float> s_Distribution(0.0f, 1.0f);
-        static std::mt19937 s_Generator(std::random_device{}());
-        float l_Value = s_Distribution(s_Generator);
+        float l_Value = s_Distribution(generator);
 
         return l_Value;
     }
 
     // Generate a random point inside the unit sphere using rejection sampling.
-    Vector3 RandomInUnitSphere()
+    Vector3 RandomInUnitSphere(std::mt19937& generator)
     {
         while (true)
         {
-            Vector3 l_Point{ RandomFloat() * 2.0f - 1.0f, RandomFloat() * 2.0f - 1.0f, RandomFloat() * 2.0f - 1.0f };
+            Vector3 l_Point{ RandomFloat(generator) * 2.0f - 1.0f, RandomFloat(generator) * 2.0f - 1.0f, RandomFloat(generator) * 2.0f - 1.0f };
             if (Vector3LengthSqr(l_Point) >= 1.0f)
             {
                 continue;
@@ -33,9 +35,9 @@ namespace
     }
 
     // Return a random unit vector by normalizing a random point within the sphere.
-    Vector3 RandomUnitVector()
+    Vector3 RandomUnitVector(std::mt19937& generator)
     {
-        Vector3 l_Vector = Vector3Normalize(RandomInUnitSphere());
+        Vector3 l_Vector = Vector3Normalize(RandomInUnitSphere(generator));
 
         return l_Vector;
     }
@@ -51,7 +53,8 @@ namespace Engine
     bool Lambertian::Scatter(const Ray& rayIn, const HitRecord& hitRecord, Vector3& attenuation, Ray& scattered) const
     {
         // Scatter rays in a random direction over the hemisphere.
-        Vector3 l_ScatterDirection = Vector3Add(hitRecord.m_Normal, RandomUnitVector());
+        std::mt19937& l_Generator = s_Generator; // Reuse thread-local RNG
+        Vector3 l_ScatterDirection = Vector3Add(hitRecord.m_Normal, RandomUnitVector(l_Generator));
         if (Vector3LengthSqr(l_ScatterDirection) < 1e-8f)
         {
             l_ScatterDirection = hitRecord.m_Normal;
@@ -72,7 +75,8 @@ namespace Engine
     {
         // Reflect the incoming ray and perturb it using fuzz.
         Vector3 l_Reflected = Vector3Reflect(Vector3Normalize(rayIn.GetDirection()), hitRecord.m_Normal);
-        Vector3 l_ScatterDir = Vector3Add(l_Reflected, Vector3Scale(RandomInUnitSphere(), m_Fuzz));
+        std::mt19937& l_Generator = s_Generator; // Reuse thread-local RNG
+        Vector3 l_ScatterDir = Vector3Add(l_Reflected, Vector3Scale(RandomInUnitSphere(l_Generator), m_Fuzz));
         scattered = Ray(hitRecord.m_Point, l_ScatterDir);
         attenuation = m_Albedo;
         bool l_Result = Vector3DotProduct(scattered.GetDirection(), hitRecord.m_Normal) > 0.0f;
@@ -94,8 +98,9 @@ namespace Engine
         float l_SinTheta = sqrtf(1.0f - l_CosTheta * l_CosTheta);
 
         bool l_CannotRefract = l_RefractionRatio * l_SinTheta > 1.0f;
+        std::mt19937& l_Generator = s_Generator; // Reuse thread-local RNG
         Vector3 l_Direction{};
-        if (l_CannotRefract || Reflectance(l_CosTheta, l_RefractionRatio) > RandomFloat())
+        if (l_CannotRefract || Reflectance(l_CosTheta, l_RefractionRatio) > RandomFloat(l_Generator))
         {
             // Reflect if we cannot refract or by probabilistic reflection.
             l_Direction = Vector3Reflect(l_UnitDirection, hitRecord.m_Normal);
