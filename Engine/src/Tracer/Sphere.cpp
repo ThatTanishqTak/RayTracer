@@ -1,11 +1,13 @@
 #include "Tracer/Sphere.h"
+#include "Renderer/Material.h"
+
+#include <raymath.h>
 
 #include <cmath>
-#include <raymath.h>
 
 namespace Engine
 {
-    Sphere::Sphere(Vector3 center, float radius) : m_Center(center), m_Radius(radius)
+    Sphere::Sphere(Vector3 center, float radius, std::shared_ptr<Material> material) : m_Center(center), m_Radius(radius), m_Material(material)
     {
 
     }
@@ -18,6 +20,11 @@ namespace Engine
     float Sphere::GetRadius() const
     {
         return m_Radius;
+    }
+
+    std::shared_ptr<Material> Sphere::GetMaterial() const
+    {
+        return m_Material;
     }
 
     bool RayIntersectsSphere(const Ray& ray, const Sphere& sphere, float targetMinimum, float targetMaximim, HitRecord& hitRecord)
@@ -49,6 +56,7 @@ namespace Engine
         hitRecord.m_Point = ray.At(l_Root);
         Vector3 l_OutwardNormal = Vector3Scale(Vector3Subtract(hitRecord.m_Point, sphere.GetCenter()), 1.0f / sphere.GetRadius());
         hitRecord.SetFaceNormal(ray, l_OutwardNormal);
+        hitRecord.m_Material = sphere.GetMaterial();
 
         return true;
     }

@@ -3,7 +3,6 @@
 #include "Core/Layer.h"
 
 #include "Renderer/Renderer.h"
-#include "Tracer/Sphere.h"
 
 #include <raylib.h>
 
@@ -21,12 +20,5 @@ public:
     virtual void OnSceneRender() override;
 
 private:
-    void ApplySettings();
-
     Engine::Renderer* m_Renderer = nullptr;
-    float m_CameraFov = 45.0f;
-    Vector3 m_ObjectPosition{ 0.0f, 0.0f, 0.0f };
-    Color m_MaterialColor{ 255, 255, 255, 255 };
-    Engine::Sphere m_Sphere;
-
 };
