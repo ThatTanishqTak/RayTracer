@@ -3,6 +3,7 @@
 
 #include <raylib.h>
 #include <rlImGui.h>
+#include <algorithm>
 
 namespace Engine
 {
@@ -31,9 +32,9 @@ namespace Engine
         RAY_CORE_INFO("Shuting down renderer");
 
         // Release frame texture if it exists.
-        if (m_FrameTexture.id != 0)
+        if (m_RenderTexture.id != 0)
         {
-            UnloadTexture(m_FrameTexture);
+            UnloadRenderTexture(m_RenderTexture);
         }
 
         // Tear down ImGui integration.
@@ -69,21 +70,88 @@ namespace Engine
 
     void Renderer::ResizeFrameTexture(int width, int height)
     {
-        // Free previous texture if any and create a new blank one.
-        if (m_FrameTexture.id != 0)
+        // Avoid reallocating the texture if dimensions are unchanged.
+        if (width == m_FrameWidth && height == m_FrameHeight)
         {
-            UnloadTexture(m_FrameTexture);
+            return;
         }
 
-        Image l_Image = GenImageColor(width, height, BLACK);
-        m_FrameTexture = LoadTextureFromImage(l_Image);
-        UnloadImage(l_Image);
+        // Release previous render texture if it exists.
+        if (m_RenderTexture.id != 0)
+        {
+            UnloadRenderTexture(m_RenderTexture);
+        }
+
+        // Create a new render texture; this enables potential direct drawing without CPU-GPU copy.
+        m_RenderTexture = LoadRenderTexture(width, height);
+        m_FrameWidth = width;
+        m_FrameHeight = height;
+
+        // Ensure cached pixel buffer matches new dimensions.
+        m_CachedPixels.assign(static_cast<size_t>(width) * static_cast<size_t>(height), Color{ 0, 0, 0, 255 });
     }
 
     void Renderer::RenderImage(const Color* buffer, int width, int height)
     {
-        // Upload the supplied color buffer to the GPU texture.
-        UpdateTexture(m_FrameTexture, buffer);
+        // Ensure texture matches incoming buffer dimensions.
+        ResizeFrameTexture(width, height);
+
+        // Determine the region of pixels that changed since the last upload.
+        bool l_Changed = false;
+        int l_MinX = width;
+        int l_MinY = height;
+        int l_MaxX = 0;
+        int l_MaxY = 0;
+
+        for (int it_Y = 0; it_Y < height; ++it_Y)
+        {
+            for (int it_X = 0; it_X < width; ++it_X)
+            {
+                int l_Index = it_Y * width + it_X;
+                const Color& l_NewColor = buffer[l_Index];
+                Color& l_OldColor = m_CachedPixels[l_Index];
+
+                if (l_NewColor.r != l_OldColor.r || l_NewColor.g != l_OldColor.g || l_NewColor.b != l_OldColor.b || l_NewColor.a != l_OldColor.a)
+                {
+                    l_OldColor = l_NewColor;
+                    l_Changed = true;
+                    if (it_X < l_MinX) { l_MinX = it_X; }
+                    if (it_Y < l_MinY) { l_MinY = it_Y; }
+                    if (it_X > l_MaxX) { l_MaxX = it_X; }
+                    if (it_Y > l_MaxY) { l_MaxY = it_Y; }
+                }
+            }
+        }
+
+        // Nothing to update.
+        if (!l_Changed)
+        {
+            return;
+        }
+
+        int l_UpdateWidth = l_MaxX - l_MinX + 1;
+        int l_UpdateHeight = l_MaxY - l_MinY + 1;
+
+        if (l_UpdateWidth == width && l_UpdateHeight == height)
+        {
+            // Entire texture changed.
+            UpdateTexture(m_RenderTexture.texture, m_CachedPixels.data());
+
+            return;
+        }
+
+        // Copy changed region to a contiguous temporary buffer.
+        std::vector<Color> l_SubBuffer(static_cast<size_t>(l_UpdateWidth) * static_cast<size_t>(l_UpdateHeight));
+        for (int it_Y = 0; it_Y < l_UpdateHeight; ++it_Y)
+        {
+            Color* l_Dst = &l_SubBuffer[static_cast<size_t>(it_Y) * static_cast<size_t>(l_UpdateWidth)];
+            const Color* l_Src = &m_CachedPixels[(l_MinY + it_Y) * width + l_MinX];
+            std::copy(l_Src, l_Src + l_UpdateWidth, l_Dst);
+        }
+
+        Rectangle l_Rect{ static_cast<float>(l_MinX), static_cast<float>(l_MinY), static_cast<float>(l_UpdateWidth), static_cast<float>(l_UpdateHeight) };
+
+        UpdateTextureRec(m_RenderTexture.texture, l_Rect, l_SubBuffer.data());
     }
 
     Camera3D* Renderer::GetCamera()
@@ -93,6 +161,6 @@ namespace Engine
 
     const Texture2D& Renderer::GetFrameTexture() const
     {
-        return m_FrameTexture;
+        return m_RenderTexture.texture;
     }
 }

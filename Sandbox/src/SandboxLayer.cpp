@@ -81,9 +81,10 @@ void SandboxLayer::OnImGuiRender()
 void SandboxLayer::OnSceneRender()
 {
     // Blit the ray traced frame buffer to the screen.
-    DrawTexture(m_Renderer->GetFrameTexture(), 0, 0, WHITE);
+    const Texture2D& l_Texture = m_Renderer->GetFrameTexture();
+    Rectangle l_Source{ 0.0f, 0.0f, static_cast<float>(l_Texture.width), static_cast<float>(-l_Texture.height) };
+    DrawTextureRec(l_Texture, l_Source, Vector2{ 0.0f, 0.0f }, WHITE);
 }
-
 void SandboxLayer::RenderScene(int width, int height)
 {
     int l_ImageWidth = width;

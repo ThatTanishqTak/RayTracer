@@ -1,6 +1,7 @@
 #pragma once
 
 #include <raylib.h>
+#include <vector>
 
 namespace Engine
 {
@@ -27,7 +28,7 @@ namespace Engine
 
         /**\brief Resize or recreate the internal frame texture.*/
         void ResizeFrameTexture(int width, int height);
-        /**\brief Upload a color buffer into the frame texture.*/
+        /**\brief Upload a color buffer into the frame texture. Optionally only update changed regions.*/
         void RenderImage(const Color* buffer, int width, int height);
 
         /**\brief Access the camera used for 3D rendering.*/
@@ -36,7 +37,10 @@ namespace Engine
         const Texture2D& GetFrameTexture() const;
 
     private:
-        Camera3D m_Camera = { 0 };       ///< Default perspective camera.
-        Texture2D m_FrameTexture = { 0 }; ///< Texture containing last rendered frame.
+        Camera3D m_Camera = { 0 };                   ///< Default perspective camera.
+        RenderTexture2D m_RenderTexture = { 0 };     ///< Render texture backing the frame buffer.
+        int m_FrameWidth = 0;                        ///< Cached width of the frame texture.
+        int m_FrameHeight = 0;                       ///< Cached height of the frame texture.
+        std::vector<Color> m_CachedPixels = { };     ///< Copy of last uploaded pixel data.
     };
 }
