@@ -37,6 +37,7 @@ void SandboxLayer::OnAttach()
 {
     m_ImageWidth = GetScreenWidth();
     m_ImageHeight = GetScreenHeight();
+
     RenderScene(m_ImageWidth, m_ImageHeight);
 }
 
@@ -54,6 +55,7 @@ void SandboxLayer::OnUpdate(float deltaTime)
     {
         m_ImageWidth = l_CurrentWidth;
         m_ImageHeight = l_CurrentHeight;
+
         RenderScene(m_ImageWidth, m_ImageHeight);
     }
 }
@@ -61,17 +63,11 @@ void SandboxLayer::OnUpdate(float deltaTime)
 void SandboxLayer::OnImGuiRender()
 {
     // Create the "Render Stats" window and ensure it stays on top
-    ImGui::Begin("Render Stats", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Text("Render Time: %.2f ms", m_RenderTime);
+    ImGui::Begin("Render Stats", nullptr);
+    ImGui::Text("Render Time: %.4f ms", m_RenderTime);
     ImGui::End();
 
-    // Force the "Render Stats" window to stay on top by setting focus
     ImGui::SetWindowFocus("Render Stats");
-
-    // Optional: Add another window to demonstrate the "Render Stats" stays on top
-    ImGui::Begin("Another Window", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::Text("This is a test window to show layer order");
-    ImGui::End();
 }
 
 void SandboxLayer::OnSceneRender()
@@ -94,9 +90,8 @@ void SandboxLayer::RenderScene(int width, int height)
 
     Vector3 l_Horizontal{ l_ViewportWidth, 0.0f, 0.0f };
     Vector3 l_Vertical{ 0.0f, l_ViewportHeight, 0.0f };
-    Vector3 l_LowerLeftCorner = Vector3Subtract(
-        Vector3Subtract(Vector3Subtract(l_Origin, Vector3Scale(l_Horizontal, 0.5f)), Vector3Scale(l_Vertical, 0.5f)),
-        Vector3{ 0.0f, 0.0f, l_FocalLength });
+    Vector3 l_LowerLeftCorner = Vector3Subtract(Vector3Subtract(Vector3Subtract(l_Origin, Vector3Scale(l_Horizontal, 0.5f)), 
+        Vector3Scale(l_Vertical, 0.5f)), { 0.0f, 0.0f, l_FocalLength });
 
     auto a_MaterialGround = std::make_shared<Engine::Lambertian>(Vector3{ 0.8f, 0.8f, 0.0f });
     auto a_MaterialCenter = std::make_shared<Engine::Lambertian>(Vector3{ 0.1f, 0.2f, 0.5f });
@@ -111,7 +106,7 @@ void SandboxLayer::RenderScene(int width, int height)
 
     m_FrameBuffer.resize(l_ImageWidth * l_ImageHeight);
 
-    auto l_Start = std::chrono::high_resolution_clock::now();
+    auto a_Start = std::chrono::high_resolution_clock::now();
 
     for (int it_Y = l_ImageHeight - 1; it_Y >= 0; --it_Y)
     {
@@ -123,9 +118,7 @@ void SandboxLayer::RenderScene(int width, int height)
                 float l_U = (static_cast<float>(it_X) + RandomFloat()) / (l_ImageWidth - 1);
                 float l_V = (static_cast<float>(it_Y) + RandomFloat()) / (l_ImageHeight - 1);
 
-                Vector3 l_Direction = Vector3Add(
-                    Vector3Add(l_LowerLeftCorner, Vector3Scale(l_Horizontal, l_U)),
-                    Vector3Scale(l_Vertical, l_V));
+                Vector3 l_Direction = Vector3Add(Vector3Add(l_LowerLeftCorner, Vector3Scale(l_Horizontal, l_U)), Vector3Scale(l_Vertical, l_V));
                 l_Direction = Vector3Subtract(l_Direction, l_Origin);
                 Engine::Ray l_Ray(l_Origin, l_Direction);
                 Vector3 l_SampleColor = Engine::RayColor(l_Ray, l_World, l_MaxDepth);
@@ -139,14 +132,13 @@ void SandboxLayer::RenderScene(int width, int height)
             l_Color.z = sqrtf(l_Color.z);
 
             int l_Index = it_Y * l_ImageWidth + it_X;
-            m_FrameBuffer[l_Index] = { static_cast<unsigned char>(255.999f * l_Color.x),
-                static_cast<unsigned char>(255.999f * l_Color.y),
+            m_FrameBuffer[l_Index] = { static_cast<unsigned char>(255.999f * l_Color.x), static_cast<unsigned char>(255.999f * l_Color.y), 
                 static_cast<unsigned char>(255.999f * l_Color.z), 255 };
         }
     }
 
-    auto l_End = std::chrono::high_resolution_clock::now();
-    m_RenderTime = std::chrono::duration<float, std::milli>(l_End - l_Start).count();
+    auto a_End = std::chrono::high_resolution_clock::now();
+    m_RenderTime = std::chrono::duration<float, std::milli>(a_End - a_Start).count();
 
     m_Renderer->ResizeFrameTexture(l_ImageWidth, l_ImageHeight);
     m_Renderer->RenderImage(m_FrameBuffer.data(), l_ImageWidth, l_ImageHeight);

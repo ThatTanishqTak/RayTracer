@@ -22,7 +22,11 @@ namespace Engine
 
 	void Window::Shutdown()
 	{
+		RAY_CORE_INFO("Shuting down window");
+
 		CloseWindow();
+
+		RAY_CORE_INFO("Window shutdown complete");
 	}
 
 	bool Window::ShouldClose() const

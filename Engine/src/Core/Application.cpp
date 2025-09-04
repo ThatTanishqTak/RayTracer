@@ -27,8 +27,12 @@ namespace Engine
 
 	Application::~Application()
 	{
+		RAY_CORE_INFO("-------SHUTING DOWN APPLICATION-------");
+		
 		m_Renderer->Shutdown();
 		m_Window->Shutdown();
+
+		RAY_CORE_INFO("-------APPLICATION SHUTDOWN COMPLETE-------");
 	}
 
 	void Application::PushLayer(Layer* layer)

@@ -1,4 +1,5 @@
 #include "Renderer/Renderer.h"
+#include "Utilities/Utilities.h"
 
 #include <raylib.h>
 #include <rlImGui.h>
@@ -7,6 +8,8 @@ namespace Engine
 {
     bool Renderer::Initialize()
     {
+        RAY_CORE_INFO("Initializing the renderer");
+
         m_Camera.position = { 0.0f, 10.0f, 10.0f };
         m_Camera.target = { 0.0f, 0.0f, 0.0f };
         m_Camera.up = { 0.0f, 1.0f, 0.0f };
@@ -16,17 +19,23 @@ namespace Engine
         rlImGuiSetup(true);
         bool l_Result = true;
 
+        RAY_CORE_INFO("Renderer initialized");
+
         return l_Result;
     }
 
     void Renderer::Shutdown()
     {
+        RAY_CORE_INFO("Shuting down renderer");
+
         if (m_FrameTexture.id != 0)
         {
             UnloadTexture(m_FrameTexture);
         }
 
         rlImGuiShutdown();
+        
+        RAY_CORE_INFO("Renderer shutdown complete");
     }
 
     void Renderer::BeginFrame()
