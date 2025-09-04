@@ -1,7 +1,6 @@
 #include "Renderer/Renderer.h"
 
 #include <raylib.h>
-#include <imgui.h>
 #include <rlImGui.h>
 
 namespace Engine
@@ -14,12 +13,7 @@ namespace Engine
         m_Camera.fovy = 45.0f;
         m_Camera.projection = CAMERA_PERSPECTIVE;
 
-        ImGui::CreateContext();
-        ImGuiIO& l_IO = ImGui::GetIO();
-        l_IO.Fonts->AddFontDefault();
-        ImGui::StyleColorsDark();
         rlImGuiSetup(true);
-
         bool l_Result = true;
 
         return l_Result;
@@ -33,7 +27,6 @@ namespace Engine
         }
 
         rlImGuiShutdown();
-        ImGui::DestroyContext();
     }
 
     void Renderer::BeginFrame()
