@@ -18,6 +18,7 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <algorithm>
 
 namespace
 {
@@ -41,7 +42,15 @@ SandboxLayer::SandboxLayer(Engine::Renderer* renderer) : Engine::Layer("SandboxL
 
 void SandboxLayer::OnAttach()
 {
-    // Cache initial window dimensions and render the scene once.
+    // Allocate a frame buffer large enough for the biggest monitor size and
+    // cache the current window dimensions for rendering.
+    m_MaxImageWidth = GetMonitorWidth(GetCurrentMonitor());
+    m_MaxImageHeight = GetMonitorHeight(GetCurrentMonitor());
+    m_FrameBuffer.resize(m_MaxImageWidth * m_MaxImageHeight);
+
+    const Color l_ClearColor{ 0, 0, 0, 255 };
+    std::fill(m_FrameBuffer.begin(), m_FrameBuffer.end(), l_ClearColor);
+
     m_ImageWidth = GetScreenWidth();
     m_ImageHeight = GetScreenHeight();
 
@@ -119,7 +128,8 @@ void SandboxLayer::RenderScene(int width, int height)
     // Build a BVH from the scene spheres to accelerate intersection tests.
     Engine::BVHNode l_Bvh(l_World, 0, l_World.size());
 
-    m_FrameBuffer.resize(l_ImageWidth * l_ImageHeight);
+    const Color l_ClearColor{ 0, 0, 0, 255 };
+    std::fill(m_FrameBuffer.begin(), m_FrameBuffer.begin() + static_cast<size_t>(l_ImageWidth * l_ImageHeight), l_ClearColor);
 
     std::atomic<float> l_TotalRenderTime = 0.0f;
     unsigned int l_ThreadCount = std::thread::hardware_concurrency();

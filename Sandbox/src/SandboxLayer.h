@@ -32,7 +32,9 @@ private:
 
     Engine::Renderer* m_Renderer = nullptr; /// Renderer used to display the result.
     float m_RenderTime = 0.0f;              /// Time taken to render the scene in ms.
-    int m_ImageWidth = 0;
-    int m_ImageHeight = 0;
-    std::vector<Color> m_FrameBuffer;
+    int m_ImageWidth = 0;                   /// Current window width used for rendering.
+    int m_ImageHeight = 0;                  /// Current window height used for rendering.
+    int m_MaxImageWidth = 0;                /// Maximum width allocated for the frame buffer.
+    int m_MaxImageHeight = 0;               /// Maximum height allocated for the frame buffer.
+    std::vector<Color> m_FrameBuffer;       /// Single allocation reused for all renders.
 };
