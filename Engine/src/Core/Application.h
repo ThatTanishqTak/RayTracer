@@ -63,6 +63,7 @@ namespace Engine
             while (!m_Window->ShouldClose())
             {
                 float l_DeltaTime = GetFrameTime();
+                m_Renderer->UpdateCamera(l_DeltaTime); // Handle camera navigation
 
                 // Render
                 m_Renderer->BeginFrame();

@@ -71,7 +71,6 @@ namespace Engine
 
         HitRecord l_LeftRecord{};
         bool l_HitLeft = m_Left && m_Left->Hit(ray, targetMinimum, targetMaximum, l_LeftRecord);
-
         float l_NewMax = l_HitLeft ? l_LeftRecord.m_Target : targetMaximum;
         HitRecord l_RightRecord{};
         bool l_HitRight = m_Right && m_Right->Hit(ray, targetMinimum, l_NewMax, l_RightRecord);

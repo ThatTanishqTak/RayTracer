@@ -3,6 +3,8 @@
 
 #include <raylib.h>
 #include <rlImGui.h>
+#include <raymath.h>
+
 #include <algorithm>
 
 namespace Engine
@@ -66,6 +68,48 @@ namespace Engine
     {
         // Return to 2D rendering mode.
         EndMode3D();
+    }
+
+    void Renderer::UpdateCamera(float deltaTime)
+    {
+        // Unity-style fly camera: hold right mouse button to look around and use WASDQE for movement.
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+        {
+            DisableCursor();
+
+            Vector2 l_MouseDelta = GetMouseDelta();
+            float l_RotateSpeed = 0.1f;
+
+            // Rotate the forward vector based on mouse movement.
+            Vector3 l_Forward = Vector3Subtract(m_Camera.target, m_Camera.position);
+            Matrix l_Rotation = MatrixRotateXYZ(Vector3{ -l_MouseDelta.y * DEG2RAD * l_RotateSpeed, -l_MouseDelta.x * DEG2RAD * l_RotateSpeed, 0.0f });
+            l_Forward = Vector3Transform(l_Forward, l_Rotation);
+
+            Vector3 l_Right = Vector3Normalize(Vector3CrossProduct(l_Forward, m_Camera.up));
+            Vector3 l_Up = Vector3Normalize(Vector3CrossProduct(l_Right, l_Forward));
+
+            float l_MoveSpeed = 5.0f;
+            if (IsKeyDown(KEY_LEFT_SHIFT))
+            {
+                l_MoveSpeed *= 2.0f;
+            }
+
+            // Move the camera based on keyboard input.
+            if (IsKeyDown(KEY_W)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Forward, l_MoveSpeed * deltaTime)); }
+            if (IsKeyDown(KEY_S)) { m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Forward, l_MoveSpeed * deltaTime)); }
+            if (IsKeyDown(KEY_A)) { m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Right, l_MoveSpeed * deltaTime)); }
+            if (IsKeyDown(KEY_D)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Right, l_MoveSpeed * deltaTime)); }
+            if (IsKeyDown(KEY_Q)) { m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Up, l_MoveSpeed * deltaTime)); }
+            if (IsKeyDown(KEY_E)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Up, l_MoveSpeed * deltaTime)); }
+
+            m_Camera.target = Vector3Add(m_Camera.position, l_Forward);
+        }
+        else
+        {
+            EnableCursor();
+        }
+
+        // Future improvement: expose movement speeds and input mapping to the user.
     }
 
     void Renderer::ResizeFrameTexture(int width, int height)

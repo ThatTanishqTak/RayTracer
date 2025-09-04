@@ -33,6 +33,8 @@ namespace Engine
 
         /**\brief Access the camera used for 3D rendering.*/
         Camera3D* GetCamera();
+        /**\brief Update the internal camera based on user input (Unity-style flycam).*/
+        void UpdateCamera(float deltaTime);
         /**\brief Retrieve the current frame texture.*/
         const Texture2D& GetFrameTexture() const;
 
