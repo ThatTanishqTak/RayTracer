@@ -6,6 +6,7 @@
 
 #include <raylib.h>
 #include <imgui.h>
+#include <rlImGui.h>
 
 #include <sstream>
 #include <memory>
@@ -36,7 +37,7 @@ namespace Engine
 			while (!m_Window->ShouldClose())
 			{
 				float l_DeltaTime = GetFrameTime();
-				
+
 				// Render
 				m_Renderer->BeginFrame();
 				{
@@ -47,10 +48,12 @@ namespace Engine
 					}
 
 					// ImGui phase
+					rlImGuiBegin();
 					for (Layer* it_Layer : m_LayerStack)
 					{
 						it_Layer->OnImGuiRender();
 					}
+					rlImGuiEnd();
 				}
 				m_Renderer->EndFrame();
 
