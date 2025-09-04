@@ -15,7 +15,8 @@ namespace Engine
         m_Camera.projection = CAMERA_PERSPECTIVE;
 
         ImGui::CreateContext();
-        ImGuiIO& l_IO = ImGui::GetIO(); (void)l_IO;
+        ImGuiIO& l_IO = ImGui::GetIO();
+        l_IO.Fonts->AddFontDefault();
         ImGui::StyleColorsDark();
         rlImGuiSetup(true);
 
