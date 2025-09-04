@@ -6,6 +6,12 @@
 
 namespace Engine
 {
+    inline float GetAxisComponent(const Vector3& a_Vector, int it_Axis)
+    {
+        // Access Vector3 components by index; relies on x, y, z being contiguous.
+        return (&a_Vector.x)[it_Axis];
+    }
+
     // Helper to compute bounding box of a sphere.
     static BoundingBox SphereBoundingBox(const Sphere& sphere)
     {
@@ -33,7 +39,8 @@ namespace Engine
         int l_Axis = rand() % 3;
         auto a_Comparator = [l_Axis](const Sphere& a_SphereA, const Sphere& a_SphereB)
             {
-                return a_SphereA.GetCenter().v[l_Axis] < a_SphereB.GetCenter().v[l_Axis];
+                // Compare sphere centers along the chosen axis.
+                return GetAxisComponent(a_SphereA.GetCenter(), l_Axis) < GetAxisComponent(a_SphereB.GetCenter(), l_Axis);
             };
 
         std::sort(spheres.begin() + static_cast<long>(start), spheres.begin() + static_cast<long>(end), a_Comparator);
