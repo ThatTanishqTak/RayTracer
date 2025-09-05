@@ -1,38 +1,47 @@
 #pragma once
 
-#include <memory>
+#include "Tracer/Sphere.h"
+#include "Tracer/BVHNode.h"
+
+#include <random>
 #include <vector>
 
 namespace Engine
 {
-    class Object;
-
     /**
-     * @brief Manages a collection of objects that make up the scene.
-     *
-     * Use this class to store and access the objects that are part of the
-     * current rendering scene.
+     * @brief Manages scene primitives and maintains an acceleration structure.
      */
     class Scene
     {
     public:
         /**
-         * @brief Add an object to the scene.
-         *
-         * Call this method when you want the scene to manage a new object.
-         * @param object Shared pointer to the object to add.
+         * @brief Add a sphere to the scene and rebuild the BVH.
+         * @param sphere Sphere to insert.
          */
-        void AddObject(std::shared_ptr<Object> object);
+        void AddSphere(const Sphere& sphere);
 
         /**
-         * @brief Retrieve the list of objects in the scene.
-         *
-         * Use this method to iterate over the objects currently stored in the scene.
-         * @return Const reference to the vector of object pointers.
+         * @brief Access the current BVH root node.
+         * @return Const reference to the root BVH node.
          */
-        const std::vector<std::shared_ptr<Object>>& GetObjects() const;
+        const BVHNode& GetBVH() const;
+
+        /**
+         * @brief Retrieve all spheres in the scene.
+         * @return Const reference to internal sphere container.
+         */
+        const std::vector<Sphere>& GetSpheres() const;
 
     private:
-        std::vector<std::shared_ptr<Object>> m_Objects{}; /// Stored scene objects.
+        /**
+         * @brief Rebuild the BVH after scene modifications.
+         */
+        void RebuildBVH();
+
+        std::vector<Sphere> m_Spheres{}; ///< Stored scene spheres.
+        BVHNode m_BVHRoot{};             ///< Root node of the BVH.
+        std::mt19937 m_RandomEngine{ std::random_device{}() }; ///< Random engine for BVH builds.
+
+        // TODO: Implement instancing & geometry caching
     };
 }

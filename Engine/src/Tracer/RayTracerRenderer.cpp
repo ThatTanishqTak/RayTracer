@@ -5,6 +5,7 @@
 #include "Tracer/Ray.h"
 
 #include <raymath.h>
+#include <algorithm>
 
 namespace Engine
 {
@@ -33,6 +34,12 @@ namespace Engine
             }
             m_Framebuffer = GenImageColor(l_Width, l_Height, BLACK);
         }
+
+        // Prepare tile bookkeeping.
+        m_TilesX = (l_Width + m_TileSize - 1) / m_TileSize;
+        m_TilesY = (l_Height + m_TileSize - 1) / m_TileSize;
+        m_TotalTiles = m_TilesX * m_TilesY;
+        m_NextTile.store(0);
 
         // Spawn one worker per hardware thread.
         unsigned int l_ThreadCount = std::thread::hardware_concurrency();
@@ -81,36 +88,44 @@ namespace Engine
 
     void RayTracerRenderer::WorkerThread(int threadID)
     {
-        // Each worker processes every N-th scanline based on thread index.
+        (void)threadID; // Thread ID currently unused; reserved for future enhancements.
         int l_Width = m_Framebuffer.width;
         int l_Height = m_Framebuffer.height;
-        int l_Stride = static_cast<int>(m_Workers.size());
 
-        // Synchronization strategy: each thread writes to distinct rows determined by its
-        // starting offset and stride. This eliminates the need for mutexes around the
-        // frame buffer because no two threads touch the same memory concurrently.
-        for (int it_Y = threadID; it_Y < l_Height && !m_StopRequested; it_Y += l_Stride)
+        while (!m_StopRequested)
         {
-            for (int it_X = 0; it_X < l_Width; ++it_X)
+            int l_TileIndex = m_NextTile.fetch_add(1);
+            if (l_TileIndex >= m_TotalTiles)
             {
-                // Placeholder ray generation. A full implementation would derive the ray
-                // from the camera parameters and image plane coordinates using
-                // m_CurrentCamera and m_CurrentScene.
-                Ray l_Ray(Vector3{}, Vector3{ 0.0f, 0.0f, -1.0f });
-                Vector3 l_ColorVec = RayColor(l_Ray, BVHNode{}, 1); // Trace a simple ray.
+                break;
+            }
 
-                // Convert the color to a pixel.
-                Color l_Color
+            int l_TileX = (l_TileIndex % m_TilesX) * m_TileSize;
+            int l_TileY = (l_TileIndex / m_TilesX) * m_TileSize;
+            int l_MaxX = std::min(l_TileX + m_TileSize, l_Width);
+            int l_MaxY = std::min(l_TileY + m_TileSize, l_Height);
+
+            for (int it_Y = l_TileY; it_Y < l_MaxY && !m_StopRequested; ++it_Y)
+            {
+                for (int it_X = l_TileX; it_X < l_MaxX; ++it_X)
                 {
-                    static_cast<unsigned char>(Clamp(l_ColorVec.x, 0.0f, 1.0f) * 255.0f),
-                    static_cast<unsigned char>(Clamp(l_ColorVec.y, 0.0f, 1.0f) * 255.0f),
-                    static_cast<unsigned char>(Clamp(l_ColorVec.z, 0.0f, 1.0f) * 255.0f),
-                    255
-                };
+                    // Placeholder ray generation. A full implementation would derive the ray
+                    // from the camera parameters and image plane coordinates using
+                    // m_CurrentCamera and m_CurrentScene.
+                    Ray l_Ray(Vector3{}, Vector3{ 0.0f, 0.0f, -1.0f });
+                    Vector3 l_ColorVec = RayColor(l_Ray, m_CurrentScene->GetBVH(), 1);
 
-                // Write to the frame buffer.
-                size_t l_Index = static_cast<size_t>(it_Y) * static_cast<size_t>(l_Width) + static_cast<size_t>(it_X);
-                reinterpret_cast<Color*>(m_Framebuffer.data)[l_Index] = l_Color;
+                    Color l_Color
+                    {
+                        static_cast<unsigned char>(Clamp(l_ColorVec.x, 0.0f, 1.0f) * 255.0f),
+                        static_cast<unsigned char>(Clamp(l_ColorVec.y, 0.0f, 1.0f) * 255.0f),
+                        static_cast<unsigned char>(Clamp(l_ColorVec.z, 0.0f, 1.0f) * 255.0f),
+                        255
+                    };
+
+                    size_t l_Index = static_cast<size_t>(it_Y) * static_cast<size_t>(l_Width) + static_cast<size_t>(it_X);
+                    reinterpret_cast<Color*>(m_Framebuffer.data)[l_Index] = l_Color;
+                }
             }
         }
 

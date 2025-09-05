@@ -21,6 +21,11 @@ namespace Engine
         */
         BVHNode(std::vector<Sphere>& spheres, size_t start, size_t end, std::mt19937& randomEngine);
 
+        /**\brief Rebuild the BVH tree from the supplied sphere list.
+        *  Call this whenever the scene geometry mutates.
+        */
+        void Rebuild(std::vector<Sphere>& spheres, std::mt19937& randomEngine);
+
         /**\brief Test the BVH tree for ray intersections.*/
         bool Hit(const Ray& ray, float targetMinimum, float targetMaximum, HitRecord& record) const;
 

@@ -1,17 +1,28 @@
 #include "Scene/Scene.h"
 
-#include <utility>
-
 namespace Engine
 {
-    void Scene::AddObject(std::shared_ptr<Object> object)
+    void Scene::AddSphere(const Sphere& sphere)
     {
-        m_Objects.push_back(std::move(object));
-        // TODO: Implement BVH or other spatial partitioning when scene mutates
+        m_Spheres.push_back(sphere);
+        RebuildBVH(); // Rebuild acceleration structure after scene change.
     }
 
-    const std::vector<std::shared_ptr<Object>>& Scene::GetObjects() const
+    const BVHNode& Scene::GetBVH() const
     {
-        return m_Objects;
+        return m_BVHRoot;
+    }
+
+    const std::vector<Sphere>& Scene::GetSpheres() const
+    {
+        return m_Spheres;
+    }
+
+    void Scene::RebuildBVH()
+    {
+        if (!m_Spheres.empty())
+        {
+            m_BVHRoot.Rebuild(m_Spheres, m_RandomEngine);
+        }
     }
 }

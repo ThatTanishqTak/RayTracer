@@ -11,7 +11,7 @@ namespace Engine
     class Scene; /// Forward declaration of the scene container.
 
     /**
-     * \brief Simple CPU based renderer that distributes scanlines across worker threads.
+     * \brief Simple CPU based renderer that distributes tiles across worker threads.
      *
      * The renderer owns a frame buffer image and spawns a pool of worker threads
      * to fill it with ray traced colors. Thread management is handled internally
@@ -44,11 +44,10 @@ namespace Engine
 
     private:
         /**
-         * \brief Worker entry point. Each thread traces its assigned scanlines.
+         * \brief Worker entry point. Each thread traces cache-friendly tiles.
          *
-         * The scene is split by scanline where the thread ID determines the first
-         * row and threads step by the total number of workers. This approach avoids
-         * write contention because each thread writes to unique rows.
+         * Tiles are fetched from a shared counter ensuring that each worker processes
+         * unique image blocks without contention.
          */
         void WorkerThread(int threadID);
 
@@ -59,5 +58,11 @@ namespace Engine
 
         const Scene* m_CurrentScene{ nullptr };      ///< Scene being rendered.
         Camera m_CurrentCamera{};                    ///< Copy of camera for consistent rays.
+
+        std::atomic<int> m_NextTile{ 0 };            ///< Index of the next tile to process.
+        int m_TileSize{ 16 };                        ///< Width and height of a square tile.
+        int m_TilesX{ 0 };                           ///< Number of tiles horizontally.
+        int m_TilesY{ 0 };                           ///< Number of tiles vertically.
+        int m_TotalTiles{ 0 };                       ///< Total amount of tiles in the frame.
     };
 }

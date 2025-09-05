@@ -53,6 +53,12 @@ namespace Engine
         m_BoundingBox = SurroundingBox(m_Left->m_BoundingBox, m_Right->m_BoundingBox);
     }
 
+    void BVHNode::Rebuild(std::vector<Sphere>& spheres, std::mt19937& randomEngine)
+    {
+        // Reconstruct the node in place by assigning a freshly built tree.
+        *this = BVHNode(spheres, 0, spheres.size(), randomEngine);
+    }
+
     bool BVHNode::Hit(const Ray& ray, float targetMinimum, float targetMaximum, HitRecord& record) const
     {
         if (!m_BoundingBox.Hit(ray, targetMinimum, targetMaximum))
