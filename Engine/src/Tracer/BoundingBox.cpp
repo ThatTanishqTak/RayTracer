@@ -4,10 +4,10 @@
 
 namespace Engine
 {
-    inline float GetAxisComponent(const Vector3& a_Vector, int it_Axis)
+    inline float GetAxisComponent(const Vector3& vector, int axis)
     {
         // Access Vector3 components by index; relies on x, y, z being contiguous.
-        return (&a_Vector.x)[it_Axis];
+        return (&vector.x)[axis];
     }
 
     BoundingBox::BoundingBox(Vector3 minPoint, Vector3 maxPoint) : m_Min(minPoint), m_Max(maxPoint)
@@ -28,11 +28,11 @@ namespace Engine
     bool BoundingBox::Hit(const Ray& ray, float targetMinimum, float targetMaximum) const
     {
         // Use the slab method to test intersection with the box on each axis.
-        for (int it_Axis = 0; it_Axis < 3; ++it_Axis)
+        for (int axis = 0; axis < 3; ++axis)
         {
-            float l_InverseDirection = 1.0f / GetAxisComponent(ray.GetDirection(), it_Axis);
-            float l_T0 = (GetAxisComponent(m_Min, it_Axis) - GetAxisComponent(ray.GetOrigin(), it_Axis)) * l_InverseDirection;
-            float l_T1 = (GetAxisComponent(m_Max, it_Axis) - GetAxisComponent(ray.GetOrigin(), it_Axis)) * l_InverseDirection;
+            float l_InverseDirection = 1.0f / GetAxisComponent(ray.GetDirection(), axis);
+            float l_T0 = (GetAxisComponent(m_Min, axis) - GetAxisComponent(ray.GetOrigin(), axis)) * l_InverseDirection;
+            float l_T1 = (GetAxisComponent(m_Max, axis) - GetAxisComponent(ray.GetOrigin(), axis)) * l_InverseDirection;
 
             if (l_InverseDirection < 0.0f)
             {

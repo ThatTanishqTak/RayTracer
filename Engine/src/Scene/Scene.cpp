@@ -4,9 +4,9 @@
 
 namespace Engine
 {
-    void Scene::AddObject(std::shared_ptr<Object> l_Object)
+    void Scene::AddObject(std::shared_ptr<Object> object)
     {
-        m_Objects.push_back(std::move(l_Object));
+        m_Objects.push_back(std::move(object));
         // TODO: Implement BVH or other spatial partitioning when scene mutates
     }
 

@@ -8,7 +8,7 @@
 
 namespace Engine
 {
-    void RayTracerRenderer::StartRender(const Scene& l_Scene, const Camera& l_Camera)
+    void RayTracerRenderer::StartRender(const Scene& scene, const Camera& camera)
     {
         if (m_IsRendering)
         {
@@ -16,8 +16,8 @@ namespace Engine
             return;
         }
 
-        m_CurrentScene = &l_Scene;
-        m_CurrentCamera = l_Camera; // Store a copy for consistent access across threads.
+        m_CurrentScene = &scene;
+        m_CurrentCamera = camera; // Store a copy for consistent access across threads.
 
         m_StopRequested = false;
         m_IsRendering = true;
@@ -74,7 +74,12 @@ namespace Engine
         return m_IsRendering.load();
     }
 
-    void RayTracerRenderer::WorkerThread(int l_ThreadId)
+    const Image& RayTracerRenderer::GetFrame() const
+    {
+        return m_Framebuffer;
+    }
+
+    void RayTracerRenderer::WorkerThread(int threadID)
     {
         // Each worker processes every N-th scanline based on thread index.
         int l_Width = m_Framebuffer.width;
@@ -84,7 +89,7 @@ namespace Engine
         // Synchronization strategy: each thread writes to distinct rows determined by its
         // starting offset and stride. This eliminates the need for mutexes around the
         // frame buffer because no two threads touch the same memory concurrently.
-        for (int it_Y = l_ThreadId; it_Y < l_Height && !m_StopRequested; it_Y += l_Stride)
+        for (int it_Y = threadID; it_Y < l_Height && !m_StopRequested; it_Y += l_Stride)
         {
             for (int it_X = 0; it_X < l_Width; ++it_X)
             {
@@ -95,7 +100,8 @@ namespace Engine
                 Vector3 l_ColorVec = RayColor(l_Ray, BVHNode{}, 1); // Trace a simple ray.
 
                 // Convert the color to a pixel.
-                Color l_Color{
+                Color l_Color
+                {
                     static_cast<unsigned char>(Clamp(l_ColorVec.x, 0.0f, 1.0f) * 255.0f),
                     static_cast<unsigned char>(Clamp(l_ColorVec.y, 0.0f, 1.0f) * 255.0f),
                     static_cast<unsigned char>(Clamp(l_ColorVec.z, 0.0f, 1.0f) * 255.0f),

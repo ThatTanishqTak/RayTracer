@@ -13,7 +13,7 @@ namespace Engine
     {
     public:
         /** \brief Update the internal camera based on user input. */
-        void Update(float l_DeltaSeconds);
+        void Update(float deltaTime);
 
         /** \brief Retrieve the current camera. */
         const Camera& GetCamera() const;

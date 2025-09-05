@@ -4,7 +4,7 @@
 
 namespace Engine
 {
-    void CameraController::Update(float l_DeltaSeconds)
+    void CameraController::Update(float deltaTime)
     {
         // Right mouse button enables camera controls.
         if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
@@ -30,37 +30,37 @@ namespace Engine
             // W: move forward
             if (IsKeyDown(KEY_W))
             {
-                m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Forward, l_Speed * l_DeltaSeconds));
+                m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Forward, l_Speed * deltaTime));
             }
 
             // S: move backward
             if (IsKeyDown(KEY_S))
             {
-                m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Forward, l_Speed * l_DeltaSeconds));
+                m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Forward, l_Speed * deltaTime));
             }
 
             // A: move left
             if (IsKeyDown(KEY_A))
             {
-                m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Right, l_Speed * l_DeltaSeconds));
+                m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Right, l_Speed * deltaTime));
             }
 
             // D: move right
             if (IsKeyDown(KEY_D))
             {
-                m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Right, l_Speed * l_DeltaSeconds));
+                m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Right, l_Speed * deltaTime));
             }
 
             // Q: move down
             if (IsKeyDown(KEY_Q))
             {
-                m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Up, l_Speed * l_DeltaSeconds));
+                m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Up, l_Speed * deltaTime));
             }
 
             // E: move up
             if (IsKeyDown(KEY_E))
             {
-                m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Up, l_Speed * l_DeltaSeconds));
+                m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Up, l_Speed * deltaTime));
             }
 
             m_Camera.target = Vector3Add(m_Camera.position, l_Forward); // Update target after movement

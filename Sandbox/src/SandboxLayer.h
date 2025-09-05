@@ -3,15 +3,17 @@
 #include "Core/Layer.h"
 
 #include "Renderer/Renderer.h"
+#include "Tracer/RayTracerRenderer.h"
+#include "Renderer/CameraController.h"
+#include "Scene/Scene.h"
 
 #include <raylib.h>
-#include <vector>
 
 class SandboxLayer : public Engine::Layer
 {
 public:
-    /**\brief Construct the layer and store a reference to the renderer.*/
-    SandboxLayer(Engine::Renderer* renderer);
+    /**\brief Construct the layer and store a reference to the real-time renderer.*/
+    SandboxLayer(Engine::Renderer* displayRenderer);
     virtual ~SandboxLayer() = default;
 
     /**\brief Called once when the layer is attached to the application.*/
@@ -27,14 +29,10 @@ public:
     virtual void OnSceneRender() override;
 
 private:
-    /**\brief Perform the offline ray tracing and upload results to the renderer.*/
-    void RenderScene(int width, int height);
-
-    Engine::Renderer* m_Renderer = nullptr; /// Renderer used to display the result.
-    float m_RenderTime = 0.0f;              /// Time taken to render the scene in ms.
-    int m_ImageWidth = 0;                   /// Current window width used for rendering.
-    int m_ImageHeight = 0;                  /// Current window height used for rendering.
-    int m_MaxImageWidth = 0;                /// Maximum width allocated for the frame buffer.
-    int m_MaxImageHeight = 0;               /// Maximum height allocated for the frame buffer.
-    std::vector<Color> m_FrameBuffer;       /// Single allocation reused for all renders.
+    Engine::Renderer* m_DisplayRenderer = nullptr;   /// Renderer used for real-time preview.
+    Engine::RayTracerRenderer m_Renderer{};          /// Offline ray tracer.
+    Engine::CameraController m_CameraController{};  /// Controls the editor camera.
+    Engine::Scene m_Scene{};                        /// Scene data to render.
+    bool m_RequestRender{ false };                  /// Flag set when user presses Render.
+    float m_RenderTime = 0.0f;                      /// Time taken to render the scene in ms.
 };

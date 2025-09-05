@@ -25,7 +25,7 @@ namespace Engine
          *
          * If a render is already in progress this call has no effect.
          */
-        void StartRender(const Scene& l_Scene, const Camera& l_Camera);
+        void StartRender(const Scene& scene, const Camera& camera);
 
         /**
          * \brief Request all worker threads to stop and block until they finish.
@@ -37,6 +37,11 @@ namespace Engine
          */
         bool IsRendering() const;
 
+        /**
+         * \brief Retrieve the current CPU-side frame buffer.
+         */
+        const Image& GetFrame() const;
+
     private:
         /**
          * \brief Worker entry point. Each thread traces its assigned scanlines.
@@ -45,7 +50,7 @@ namespace Engine
          * row and threads step by the total number of workers. This approach avoids
          * write contention because each thread writes to unique rows.
          */
-        void WorkerThread(int l_ThreadId);
+        void WorkerThread(int threadID);
 
         std::vector<std::thread> m_Workers;          ///< Background workers performing the trace.
         std::atomic<bool> m_IsRendering{ false };    ///< True while workers are active.

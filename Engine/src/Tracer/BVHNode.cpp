@@ -6,10 +6,10 @@
 
 namespace Engine
 {
-    inline float GetAxisComponent(const Vector3& a_Vector, int it_Axis)
+    inline float GetAxisComponent(const Vector3& vector, int axis)
     {
         // Access Vector3 components by index; relies on x, y, z being contiguous.
-        return (&a_Vector.x)[it_Axis];
+        return (&vector.x)[axis];
     }
 
     // Helper to compute bounding box of a sphere.
@@ -38,10 +38,10 @@ namespace Engine
         // Choose axis randomly for splitting using the supplied engine.
         std::uniform_int_distribution<int> l_AxisDistribution(0, 2);
         int l_Axis = l_AxisDistribution(randomEngine); // TODO: allow alternative heuristics for axis selection
-        auto a_Comparator = [l_Axis](const Sphere& a_SphereA, const Sphere& a_SphereB)
+        auto a_Comparator = [l_Axis](const Sphere& sphereA, const Sphere& sphereB)
             {
                 // Compare sphere centers along the chosen axis.
-                return GetAxisComponent(a_SphereA.GetCenter(), l_Axis) < GetAxisComponent(a_SphereB.GetCenter(), l_Axis);
+                return GetAxisComponent(sphereA.GetCenter(), l_Axis) < GetAxisComponent(sphereB.GetCenter(), l_Axis);
             };
 
         std::sort(spheres.begin() + static_cast<long>(start), spheres.begin() + static_cast<long>(end), a_Comparator);
