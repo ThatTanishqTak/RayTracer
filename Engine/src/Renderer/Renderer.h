@@ -39,10 +39,11 @@ namespace Engine
         const Texture2D& GetFrameTexture() const;
 
     private:
-        Camera3D m_Camera = { 0 };                   ///< Default perspective camera.
-        RenderTexture2D m_RenderTexture = { 0 };     ///< Render texture backing the frame buffer.
-        int m_FrameWidth = 0;                        ///< Cached width of the frame texture.
-        int m_FrameHeight = 0;                       ///< Cached height of the frame texture.
-        std::vector<Color> m_CachedPixels = { };     ///< Copy of last uploaded pixel data.
+        Camera3D m_Camera = { 0 }; ///Default perspective camera.
+        RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
+        int m_FrameWidth = 0; ///Cached width of the frame texture.
+        int m_FrameHeight = 0; ///Cached height of the frame texture.
+        std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.
+        std::vector<Color> m_SubBuffer = { }; ///Reusable buffer for sub-region uploads to avoid frequent allocations.
     };
 }

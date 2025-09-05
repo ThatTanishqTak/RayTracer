@@ -223,18 +223,32 @@ namespace Engine
             return;
         }
 
-        // Copy changed region to a contiguous temporary buffer.
-        std::vector<Color> l_SubBuffer(static_cast<size_t>(l_UpdateWidth) * static_cast<size_t>(l_UpdateHeight));
+        // Copy changed region into a persistent sub-buffer to minimize allocations.
+        size_t l_SubBufferSize = static_cast<size_t>(l_UpdateWidth) * static_cast<size_t>(l_UpdateHeight);
+        if (m_SubBuffer.size() != l_SubBufferSize)
+        {
+            // Future improvement: reserve capacity in larger chunks or use tiling for massive images.
+            m_SubBuffer.resize(l_SubBufferSize);
+        }
+
         for (int it_Y = 0; it_Y < l_UpdateHeight; ++it_Y)
         {
-            Color* l_Dst = &l_SubBuffer[static_cast<size_t>(it_Y) * static_cast<size_t>(l_UpdateWidth)];
+            Color* l_Dst = &m_SubBuffer[static_cast<size_t>(it_Y) * static_cast<size_t>(l_UpdateWidth)];
             const Color* l_Src = &m_CachedPixels[(l_MinY + it_Y) * width + l_MinX];
             std::copy(l_Src, l_Src + l_UpdateWidth, l_Dst);
         }
 
-        Rectangle l_Rect{ static_cast<float>(l_MinX), static_cast<float>(l_MinY), static_cast<float>(l_UpdateWidth), static_cast<float>(l_UpdateHeight) };
+        Rectangle l_Rect
+        {
+            static_cast<float>(l_MinX),
+            static_cast<float>(l_MinY),
+            static_cast<float>(l_UpdateWidth),
+            static_cast<float>(l_UpdateHeight)
+        };
 
-        UpdateTextureRec(m_RenderTexture.texture, l_Rect, l_SubBuffer.data());
+        UpdateTextureRec(m_RenderTexture.texture, l_Rect, m_SubBuffer.data());
+
+        // Future improvement: implement tiled texture updates to further reduce CPU-GPU transfers.
     }
 
     Camera3D* Renderer::GetCamera()
