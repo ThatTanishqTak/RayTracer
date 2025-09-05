@@ -198,10 +198,25 @@ namespace Engine
                 {
                     l_OldColor = l_NewColor;
                     l_Changed = true;
-                    if (it_X < l_MinX) { l_MinX = it_X; }
-                    if (it_Y < l_MinY) { l_MinY = it_Y; }
-                    if (it_X > l_MaxX) { l_MaxX = it_X; }
-                    if (it_Y > l_MaxY) { l_MaxY = it_Y; }
+                    if (it_X < l_MinX)
+                    {
+                        l_MinX = it_X;
+                    }
+
+                    if (it_Y < l_MinY)
+                    {
+                        l_MinY = it_Y;
+                    }
+
+                    if (it_X > l_MaxX)
+                    {
+                        l_MaxX = it_X;
+                    }
+
+                    if (it_Y > l_MaxY)
+                    {
+                        l_MaxY = it_Y;
+                    }
                 }
             }
         }
