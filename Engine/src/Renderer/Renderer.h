@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Renderer/CameraController.h"
+
 #include <raylib.h>
 #include <vector>
 
@@ -32,14 +34,14 @@ namespace Engine
         void RenderImage(const Color* buffer, int width, int height);
 
         /**\brief Access the camera used for 3D rendering.*/
-        Camera3D* GetCamera();
-        /**\brief Update the internal camera based on user input (Unity-style flycam).*/
+        const Camera& GetCamera() const;
+        /**\brief Update the internal camera based on user input.*/
         void UpdateCamera(float deltaTime);
         /**\brief Retrieve the current frame texture.*/
         const Texture2D& GetFrameTexture() const;
 
     private:
-        Camera3D m_Camera = { 0 }; ///Default perspective camera.
+        CameraController m_CameraController{}; ///Centralized camera controller for input.
         RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
         int m_FrameWidth = 0; ///Cached width of the frame texture.
         int m_FrameHeight = 0; ///Cached height of the frame texture.

@@ -4,7 +4,6 @@
 
 #include "Renderer/Renderer.h"
 #include "Tracer/RayTracerRenderer.h"
-#include "Renderer/CameraController.h"
 #include "Scene/Scene.h"
 
 #include <raylib.h>
@@ -31,7 +30,6 @@ public:
 private:
     Engine::Renderer* m_DisplayRenderer = nullptr;   /// Renderer used for real-time preview.
     Engine::RayTracerRenderer m_Renderer{};          /// Offline ray tracer.
-    Engine::CameraController m_CameraController{};  /// Controls the editor camera.
     Engine::Scene m_Scene{};                        /// Scene data to render.
     bool m_RequestRender{ false };                  /// Flag set when user presses Render.
     float m_RenderTime = 0.0f;                      /// Time taken to render the scene in ms.

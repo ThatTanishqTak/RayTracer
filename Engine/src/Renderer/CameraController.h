@@ -12,11 +12,15 @@ namespace Engine
     class CameraController
     {
     public:
+        /** \brief Construct controller with a default perspective camera. */
+        CameraController();
         /** \brief Update the internal camera based on user input. */
         void Update(float deltaTime);
 
-        /** \brief Retrieve the current camera. */
+        /** \brief Retrieve the current camera for read-only access. */
         const Camera& GetCamera() const;
+        /** \brief Retrieve the current camera for modification. */
+        Camera& GetCamera();
 
     private:
         Camera m_Camera{};            ///< Internal camera state used for rendering.

@@ -20,16 +20,14 @@ void SandboxLayer::OnDetach()
 
 void SandboxLayer::OnUpdate(float deltaTime)
 {
-    // Update the editor camera every frame for real-time preview.
-    m_CameraController.Update(deltaTime);
-
-    // Begin a new render if the user requested one and no render is running.
+    // Camera updates are handled by the renderer; begin a new render if requested.
     if (m_RequestRender && !m_Renderer.IsRendering())
     {
-        m_Renderer.StartRender(m_Scene, m_CameraController.GetCamera());
+        m_Renderer.StartRender(m_Scene, m_DisplayRenderer->GetCamera());
         m_RequestRender = false;
     }
 }
+
 
 void SandboxLayer::OnImGuiRender()
 {
@@ -50,10 +48,11 @@ void SandboxLayer::OnSceneRender()
         const Image& l_Image = m_Renderer.GetFrame();
         m_DisplayRenderer->RenderImage(static_cast<const Color*>(l_Image.data), l_Image.width, l_Image.height);
     }
+
     else
     {
-        // Editor mode: show real-time preview using the current camera.
-        m_DisplayRenderer->Begin3D(m_CameraController.GetCamera());
+        // Editor mode: show real-time preview using the renderer's camera.
+        m_DisplayRenderer->Begin3D(m_DisplayRenderer->GetCamera());
         // Preview drawing could be added here in the future.
         m_DisplayRenderer->End3D();
     }

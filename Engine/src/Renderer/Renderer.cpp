@@ -3,7 +3,6 @@
 
 #include <raylib.h>
 #include <rlImGui.h>
-#include <raymath.h>
 
 #include <algorithm>
 #include <type_traits>
@@ -15,13 +14,6 @@ namespace Engine
         RAY_CORE_INFO("Initializing the renderer");
 
         bool l_Result = true; // Track overall initialization success
-
-        // Set up a default perspective camera.
-        m_Camera.position = { 0.0f, 10.0f, 10.0f };
-        m_Camera.target = { 0.0f, 0.0f, 0.0f };
-        m_Camera.up = { 0.0f, 1.0f, 0.0f };
-        m_Camera.fovy = 45.0f;
-        m_Camera.projection = CAMERA_PERSPECTIVE;
 
         // Initialize ImGui for raylib. Capture potential return value if provided.
         using l_RlImGuiReturn = decltype(rlImGuiSetup(true));
@@ -91,59 +83,9 @@ namespace Engine
 
     void Renderer::UpdateCamera(float deltaTime)
     {
-        // Manage cursor locking only on state changes and restore previous position for usability.
-        static bool s_IsCursorLocked = false;
-        static Vector2 s_LastMousePos{};
-
-        // Lock the cursor when the right mouse button is pressed.
-        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
-        {
-            Vector2 l_LastMousePos = GetMousePosition();
-            s_LastMousePos = l_LastMousePos;
-            DisableCursor();
-            s_IsCursorLocked = true;
-        }
-
-        // Unlock and restore cursor position when the button is released.
-        if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
-        {
-            EnableCursor();
-            SetMousePosition(static_cast<int>(s_LastMousePos.x), static_cast<int>(s_LastMousePos.y));
-            s_IsCursorLocked = false;
-        }
-
-        // Unity-style fly camera: hold right mouse button to look around and use WASDQE for movement.
-        if (s_IsCursorLocked)
-        {
-            Vector2 l_MouseDelta = GetMouseDelta();
-            float l_RotateSpeed = 0.1f;
-
-            // Rotate the forward vector based on mouse movement.
-            Vector3 l_Forward = Vector3Subtract(m_Camera.target, m_Camera.position);
-            Matrix l_Rotation = MatrixRotateXYZ(Vector3{ -l_MouseDelta.y * DEG2RAD * l_RotateSpeed, -l_MouseDelta.x * DEG2RAD * l_RotateSpeed, 0.0f });
-            l_Forward = Vector3Transform(l_Forward, l_Rotation);
-
-            Vector3 l_Right = Vector3Normalize(Vector3CrossProduct(l_Forward, m_Camera.up));
-            Vector3 l_Up = Vector3Normalize(Vector3CrossProduct(l_Right, l_Forward));
-
-            float l_MoveSpeed = 5.0f;
-            if (IsKeyDown(KEY_LEFT_SHIFT))
-            {
-                l_MoveSpeed *= 2.0f;
-            }
-
-            // Move the camera based on keyboard input.
-            if (IsKeyDown(KEY_W)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Forward, l_MoveSpeed * deltaTime)); }
-            if (IsKeyDown(KEY_S)) { m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Forward, l_MoveSpeed * deltaTime)); }
-            if (IsKeyDown(KEY_A)) { m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Right, l_MoveSpeed * deltaTime)); }
-            if (IsKeyDown(KEY_D)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Right, l_MoveSpeed * deltaTime)); }
-            if (IsKeyDown(KEY_Q)) { m_Camera.position = Vector3Subtract(m_Camera.position, Vector3Scale(l_Up, l_MoveSpeed * deltaTime)); }
-            if (IsKeyDown(KEY_E)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Up, l_MoveSpeed * deltaTime)); }
-
-            m_Camera.target = Vector3Add(m_Camera.position, l_Forward);
-        }
-
-        // Future improvement: expose movement speeds and input mapping to the user.
+        // Delegate input handling to the camera controller.
+        // Centralizing camera logic simplifies future extensions such as custom bindings or editor modes.
+        m_CameraController.Update(deltaTime);
     }
 
     bool Renderer::ResizeFrameTexture(int width, int height)
@@ -280,9 +222,9 @@ namespace Engine
         // Future improvement: implement tiled texture updates to further reduce CPU-GPU transfers.
     }
 
-    Camera3D* Renderer::GetCamera()
+    const Camera& Renderer::GetCamera() const
     {
-        return &m_Camera;
+        return m_CameraController.GetCamera();
     }
 
     const Texture2D& Renderer::GetFrameTexture() const

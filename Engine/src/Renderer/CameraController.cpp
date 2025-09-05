@@ -4,6 +4,17 @@
 
 namespace Engine
 {
+    CameraController::CameraController()
+    {
+        // Default to a simple perspective camera looking at the origin.
+        m_Camera.position = { 0.0f, 10.0f, 10.0f };
+        m_Camera.target = { 0.0f, 0.0f, 0.0f };
+        m_Camera.up = { 0.0f, 1.0f, 0.0f };
+        m_Camera.fovy = 45.0f;
+        m_Camera.projection = CAMERA_PERSPECTIVE;
+    }
+
+
     void CameraController::Update(float deltaTime)
     {
         // Track cursor state so locking only happens on button state changes.
@@ -89,6 +100,11 @@ namespace Engine
     }
 
     const Camera& CameraController::GetCamera() const
+    {
+        return m_Camera;
+    }
+
+    Camera& CameraController::GetCamera()
     {
         return m_Camera;
     }
