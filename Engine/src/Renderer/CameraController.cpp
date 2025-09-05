@@ -18,28 +18,26 @@ namespace Engine
     void CameraController::Update(float deltaTime)
     {
         // Track cursor state so locking only happens on button state changes.
-        static bool s_IsCursorLocked = false;
-        static Vector2 s_LastMousePos{};
-
-        // When the right mouse button is pressed, lock the cursor and remember its position.
+        // Remember the mouse location so the cursor can return after unlocking.
         if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
         {
-            Vector2 l_LastMousePos = GetMousePosition();
-            s_LastMousePos = l_LastMousePos;
+            // Capture the cursor position prior to locking for later restoration.
+            Vector2 l_PreviousMousePos = GetMousePosition();
+            m_PreviousMousePos = l_PreviousMousePos;
             DisableCursor();
-            s_IsCursorLocked = true;
+            m_IsCursorLocked = true;
         }
 
         // On release, unlock the cursor and restore the previous position to avoid snapping.
         if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
         {
             EnableCursor();
-            SetMousePosition(static_cast<int>(s_LastMousePos.x), static_cast<int>(s_LastMousePos.y));
-            s_IsCursorLocked = false;
+            SetMousePosition(static_cast<int>(m_PreviousMousePos.x), static_cast<int>(m_PreviousMousePos.y));
+            m_IsCursorLocked = false;
         }
 
         // Only update the camera when the cursor is locked.
-        if (s_IsCursorLocked)
+        if (m_IsCursorLocked)
         {
             // Mouse look: adjust forward direction from mouse movement.
             Vector2 l_MouseDelta = GetMouseDelta();

@@ -25,5 +25,7 @@ namespace Engine
     private:
         Camera m_Camera{};            ///< Internal camera state used for rendering.
         float m_MoveSpeed{ 5.0f };      ///< Units per second movement speed. // TODO: expose move speed to editor UI
+        bool m_IsCursorLocked{ false }; ///< Tracks whether the cursor is currently locked for camera look.
+        Vector2 m_PreviousMousePos{};   ///< Stored cursor position prior to locking. // TODO: allow disabling cursor return
     };
 }
