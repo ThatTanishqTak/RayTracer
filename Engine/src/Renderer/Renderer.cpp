@@ -91,11 +91,30 @@ namespace Engine
 
     void Renderer::UpdateCamera(float deltaTime)
     {
-        // Unity-style fly camera: hold right mouse button to look around and use WASDQE for movement.
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-        {
-            DisableCursor();
+        // Manage cursor locking only on state changes and restore previous position for usability.
+        static bool s_IsCursorLocked = false;
+        static Vector2 s_LastMousePos{};
 
+        // Lock the cursor when the right mouse button is pressed.
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+        {
+            Vector2 l_LastMousePos = GetMousePosition();
+            s_LastMousePos = l_LastMousePos;
+            DisableCursor();
+            s_IsCursorLocked = true;
+        }
+
+        // Unlock and restore cursor position when the button is released.
+        if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
+        {
+            EnableCursor();
+            SetMousePosition(static_cast<int>(s_LastMousePos.x), static_cast<int>(s_LastMousePos.y));
+            s_IsCursorLocked = false;
+        }
+
+        // Unity-style fly camera: hold right mouse button to look around and use WASDQE for movement.
+        if (s_IsCursorLocked)
+        {
             Vector2 l_MouseDelta = GetMouseDelta();
             float l_RotateSpeed = 0.1f;
 
@@ -122,11 +141,6 @@ namespace Engine
             if (IsKeyDown(KEY_E)) { m_Camera.position = Vector3Add(m_Camera.position, Vector3Scale(l_Up, l_MoveSpeed * deltaTime)); }
 
             m_Camera.target = Vector3Add(m_Camera.position, l_Forward);
-        }
-
-        else
-        {
-            EnableCursor();
         }
 
         // Future improvement: expose movement speeds and input mapping to the user.

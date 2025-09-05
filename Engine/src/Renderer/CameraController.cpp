@@ -6,11 +6,30 @@ namespace Engine
 {
     void CameraController::Update(float deltaTime)
     {
-        // Right mouse button enables camera controls.
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-        {
-            DisableCursor();
+        // Track cursor state so locking only happens on button state changes.
+        static bool s_IsCursorLocked = false;
+        static Vector2 s_LastMousePos{};
 
+        // When the right mouse button is pressed, lock the cursor and remember its position.
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+        {
+            Vector2 l_LastMousePos = GetMousePosition();
+            s_LastMousePos = l_LastMousePos;
+            DisableCursor();
+            s_IsCursorLocked = true;
+        }
+
+        // On release, unlock the cursor and restore the previous position to avoid snapping.
+        if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
+        {
+            EnableCursor();
+            SetMousePosition(static_cast<int>(s_LastMousePos.x), static_cast<int>(s_LastMousePos.y));
+            s_IsCursorLocked = false;
+        }
+
+        // Only update the camera when the cursor is locked.
+        if (s_IsCursorLocked)
+        {
             // Mouse look: adjust forward direction from mouse movement.
             Vector2 l_MouseDelta = GetMouseDelta();
             float l_RotateSpeed = 0.1f;
@@ -64,11 +83,6 @@ namespace Engine
             }
 
             m_Camera.target = Vector3Add(m_Camera.position, l_Forward); // Update target after movement
-        }
-
-        else
-        {
-            EnableCursor();
         }
 
         // Future improvement: allow custom key mappings and adjustable rotation speed.
