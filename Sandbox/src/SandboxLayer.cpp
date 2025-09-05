@@ -126,8 +126,9 @@ void SandboxLayer::RenderScene(int width, int height)
     l_World.emplace_back(Vector3{ -1.0f, 0.0f, -1.0f }, 0.5f, a_MaterialLeft);
     l_World.emplace_back(Vector3{ 1.0f, 0.0f, -1.0f }, 0.5f, a_MaterialRight);
 
-    // Build a BVH from the scene spheres to accelerate intersection tests.
-    Engine::BVHNode l_Bvh(l_World, 0, l_World.size());
+    // Build a BVH from the scene spheres using a deterministic local engine.
+    std::mt19937 l_BvhEngine{ 0 };
+    Engine::BVHNode l_Bvh(l_World, 0, l_World.size(), l_BvhEngine);
 
     const Color l_ClearColor{ 0, 0, 0, 255 };
     std::fill(m_FrameBuffer.begin(), m_FrameBuffer.begin() + static_cast<size_t>(l_ImageWidth * l_ImageHeight), l_ClearColor);

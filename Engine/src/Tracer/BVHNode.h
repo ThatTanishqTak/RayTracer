@@ -4,6 +4,7 @@
 #include "Tracer/Sphere.h"
 
 #include <memory>
+#include <random>
 #include <vector>
 
 namespace Engine
@@ -15,7 +16,10 @@ namespace Engine
     {
     public:
         BVHNode() = default;
-        BVHNode(std::vector<Sphere>& spheres, size_t start, size_t end);
+        /**\brief Construct the BVH tree using the provided random engine.
+        * The engine is passed by reference to allow deterministic but thread-safe builds.
+        */
+        BVHNode(std::vector<Sphere>& spheres, size_t start, size_t end, std::mt19937& randomEngine);
 
         /**\brief Test the BVH tree for ray intersections.*/
         bool Hit(const Ray& ray, float targetMinimum, float targetMaximum, HitRecord& record) const;

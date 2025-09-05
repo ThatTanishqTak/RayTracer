@@ -21,12 +21,7 @@ namespace Engine
         return l_Box;
     }
 
-    // Static random engine seeded with a fixed value for reproducible BVH construction.
-    // The seed can be changed in the future to introduce variability if desired.
-    static std::mt19937 s_RandomEngine{ 0 };
-    static std::uniform_int_distribution<int> s_AxisDistribution(0, 2);
-
-    BVHNode::BVHNode(std::vector<Sphere>& spheres, size_t start, size_t end)
+    BVHNode::BVHNode(std::vector<Sphere>& spheres, size_t start, size_t end, std::mt19937& randomEngine)
     {
         // Build the tree by recursively partitioning the list of spheres.
         size_t l_ObjectSpan = end - start;
@@ -40,8 +35,9 @@ namespace Engine
             return;
         }
 
-        // Choose axis randomly for splitting using the deterministic engine.
-        int l_Axis = s_AxisDistribution(s_RandomEngine);
+        // Choose axis randomly for splitting using the supplied engine.
+        std::uniform_int_distribution<int> l_AxisDistribution(0, 2);
+        int l_Axis = l_AxisDistribution(randomEngine); // TODO: allow alternative heuristics for axis selection
         auto a_Comparator = [l_Axis](const Sphere& a_SphereA, const Sphere& a_SphereB)
             {
                 // Compare sphere centers along the chosen axis.
@@ -51,8 +47,8 @@ namespace Engine
         std::sort(spheres.begin() + static_cast<long>(start), spheres.begin() + static_cast<long>(end), a_Comparator);
 
         size_t l_Mid = start + l_ObjectSpan / 2;
-        m_Left = std::make_shared<BVHNode>(spheres, start, l_Mid);
-        m_Right = std::make_shared<BVHNode>(spheres, l_Mid, end);
+        m_Left = std::make_shared<BVHNode>(spheres, start, l_Mid, randomEngine);
+        m_Right = std::make_shared<BVHNode>(spheres, l_Mid, end, randomEngine);
 
         m_BoundingBox = SurroundingBox(m_Left->m_BoundingBox, m_Right->m_BoundingBox);
     }
