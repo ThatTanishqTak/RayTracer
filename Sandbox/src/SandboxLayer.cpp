@@ -53,7 +53,7 @@ void SandboxLayer::OnAttach()
 
     m_ImageWidth = GetScreenWidth();
     m_ImageHeight = GetScreenHeight();
-
+    
     RenderScene(m_ImageWidth, m_ImageHeight);
 }
 
@@ -82,6 +82,7 @@ void SandboxLayer::OnImGuiRender()
     // Create the "Render Stats" window and ensure it stays on top
     ImGui::Begin("Render Stats", nullptr);
     ImGui::Text("Render Time: %.4f ms", m_RenderTime);
+    ImGui::Text("FPS: %d", GetFrameTime());
     ImGui::End();
 
     ImGui::SetWindowFocus("Render Stats");
@@ -195,6 +196,9 @@ void SandboxLayer::RenderScene(int width, int height)
     m_RenderTime = l_TotalRenderTime.load();
 
     // Upload the finished image to the GPU for display.
-    m_Renderer->ResizeFrameTexture(l_ImageWidth, l_ImageHeight);
-    m_Renderer->RenderImage(m_FrameBuffer.data(), l_ImageWidth, l_ImageHeight);
+    // Only upload the image if the frame texture could be resized successfully.
+    if (m_Renderer->ResizeFrameTexture(l_ImageWidth, l_ImageHeight))
+    {
+        m_Renderer->RenderImage(m_FrameBuffer.data(), l_ImageWidth, l_ImageHeight);
+    }
 }

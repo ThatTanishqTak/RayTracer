@@ -6,12 +6,15 @@
 #include <raymath.h>
 
 #include <algorithm>
+#include <type_traits>
 
 namespace Engine
 {
     bool Renderer::Initialize()
     {
         RAY_CORE_INFO("Initializing the renderer");
+
+        bool l_Result = true; // Track overall initialization success
 
         // Set up a default perspective camera.
         m_Camera.position = { 0.0f, 10.0f, 10.0f };
@@ -20,9 +23,25 @@ namespace Engine
         m_Camera.fovy = 45.0f;
         m_Camera.projection = CAMERA_PERSPECTIVE;
 
-        // Initialize ImGui for raylib.
-        rlImGuiSetup(true);
-        bool l_Result = true;
+        // Initialize ImGui for raylib. Capture potential return value if provided.
+        using l_RlImGuiReturn = decltype(rlImGuiSetup(true));
+        if constexpr (std::is_same_v<l_RlImGuiReturn, void>)
+        {
+            rlImGuiSetup(true);
+        }
+
+        else
+        {
+            return false;
+        }
+
+        // Allocate a minimal render texture to verify GPU resources.
+        if (l_Result)
+        {
+            l_Result = ResizeFrameTexture(1, 1);
+        }
+
+        // Future improvement: provide detailed error codes instead of a simple boolean.
 
         RAY_CORE_INFO("Renderer initialized");
 
@@ -104,6 +123,7 @@ namespace Engine
 
             m_Camera.target = Vector3Add(m_Camera.position, l_Forward);
         }
+
         else
         {
             EnableCursor();
@@ -112,33 +132,52 @@ namespace Engine
         // Future improvement: expose movement speeds and input mapping to the user.
     }
 
-    void Renderer::ResizeFrameTexture(int width, int height)
+    bool Renderer::ResizeFrameTexture(int width, int height)
     {
         // Avoid reallocating the texture if dimensions are unchanged.
         if (width == m_FrameWidth && height == m_FrameHeight)
         {
-            return;
+            return true;
         }
 
         // Release previous render texture if it exists.
         if (m_RenderTexture.id != 0)
         {
             UnloadRenderTexture(m_RenderTexture);
+            m_RenderTexture = { 0 };
         }
 
         // Create a new render texture; this enables potential direct drawing without CPU-GPU copy.
-        m_RenderTexture = LoadRenderTexture(width, height);
+        RenderTexture2D l_NewTexture = LoadRenderTexture(width, height);
+        if (l_NewTexture.id == 0)
+        {
+            RAY_CORE_ERROR("Failed to allocate render texture %d x %d", width, height);
+
+            m_FrameWidth = 0;
+            m_FrameHeight = 0;
+            m_CachedPixels.clear();
+
+            return false;
+        }
+
+        m_RenderTexture = l_NewTexture;
         m_FrameWidth = width;
         m_FrameHeight = height;
 
         // Ensure cached pixel buffer matches new dimensions.
         m_CachedPixels.assign(static_cast<size_t>(width) * static_cast<size_t>(height), Color{ 0, 0, 0, 255 });
+        
+        // Future improvement: handle different pixel formats and color spaces.
+        return true;
     }
 
     void Renderer::RenderImage(const Color* buffer, int width, int height)
     {
         // Ensure texture matches incoming buffer dimensions.
-        ResizeFrameTexture(width, height);
+        if (!ResizeFrameTexture(width, height))
+        {
+            return; // Abort rendering if texture allocation failed
+        }
 
         // Determine the region of pixels that changed since the last upload.
         bool l_Changed = false;

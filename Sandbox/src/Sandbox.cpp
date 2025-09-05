@@ -20,7 +20,7 @@ Engine::Application* Engine::CreateApplication()
     ApplicationSpecifications l_Specifications;
     l_Specifications.Width = 1920;
     l_Specifications.Height = 1080;
-    l_Specifications.Title = "RayTracer";
+    l_Specifications.Title = "Sandbox";
 
     RAY_INFO("-------APPLICATION CREATED-------");
 

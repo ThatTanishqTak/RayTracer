@@ -26,8 +26,8 @@ namespace Engine
         /**\brief Leave 3D drawing mode.*/
         void End3D();
 
-        /**\brief Resize or recreate the internal frame texture.*/
-        void ResizeFrameTexture(int width, int height);
+        /**\brief Resize or recreate the internal frame texture. Returns false on allocation failure.*/
+        bool ResizeFrameTexture(int width, int height);
         /**\brief Upload a color buffer into the frame texture. Optionally only update changed regions.*/
         void RenderImage(const Color* buffer, int width, int height);
 

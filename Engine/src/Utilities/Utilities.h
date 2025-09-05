@@ -42,7 +42,10 @@ namespace Engine
     }
 
 #if _DEBUG
-#define RAY_ASSERT(condition, message) ::Engine::Utilities::Logging::Assert(condition, message)
+#define RAY_ASSERT(condition, message) do { \
+    /* Assert with CORE log type; do-while wraps for safe single-statement usage */ \
+    ::Engine::Utilities::Logging::Assert(::Engine::Utilities::Logging::LogType::CORE, (condition), (message)); \
+} while (0)
 
 #define RAY_CORE_INFO(message) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CORE, message)
 #define RAY_CORE_WARNING(message) ::Engine::Utilities::Logging::LogWarning(::Engine::Utilities::Logging::LogType::CORE, message)

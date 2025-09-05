@@ -1,6 +1,8 @@
 #include "Core/Application.h"
 #include "Utilities/Utilities.h"
 
+#include <stdexcept>
+
 namespace Engine
 {
     Application::Application(const ApplicationSpecifications& specifications)
@@ -13,16 +15,32 @@ namespace Engine
 
         // Create and initialize the window using the user supplied specifications.
         m_Window = std::make_unique<Window>();
-        if (!m_Window->Initialize(specifications.Width, specifications.Height, specifications.Title))
+        const bool l_WindowInitialized = m_Window->Initialize(specifications.Width, specifications.Height, specifications.Title);
+        if (!l_WindowInitialized)
         {
             RAY_CORE_ERROR("Failed to initialize window");
+
+            // Ensure any partially created resources are released before aborting construction.
+            m_Window->Shutdown();
+            m_Window.reset();
+
+            // TODO: Introduce a retry mechanism to attempt window creation again.
         }
 
         // Construct the renderer and set it up for rendering.
         m_Renderer = std::make_shared<Renderer>();
-        if (!m_Renderer->Initialize())
+        const bool l_RendererInitialized = m_Renderer->Initialize();
+        if (!l_RendererInitialized)
         {
             RAY_CORE_ERROR("Failed to initialize renderer");
+
+            // Clean up previously initialized subsystems to avoid leaks.
+            m_Renderer->Shutdown();
+            m_Renderer.reset();
+            m_Window->Shutdown();
+            m_Window.reset();
+
+            // TODO: Allow retrying renderer initialization without destroying the application object.
         }
 
         RAY_CORE_INFO("-------APPLICATION INITIALIZED-------");
@@ -33,8 +51,15 @@ namespace Engine
         // Clean up resources in reverse order of creation.
         RAY_CORE_INFO("-------SHUTING DOWN APPLICATION-------");
 
-        m_Renderer->Shutdown();
-        m_Window->Shutdown();
+        if (m_Renderer)
+        {
+            m_Renderer->Shutdown();
+        }
+
+        if (m_Window)
+        {
+            m_Window->Shutdown();
+        }
 
         RAY_CORE_INFO("-------APPLICATION SHUTDOWN COMPLETE-------");
     }
@@ -49,7 +74,8 @@ namespace Engine
     void Application::PushOverlay(Layer* overlay)
     {
         // Overlays sit on top of normal layers and are also attached immediately.
-        m_LayerStack.PopOverlay(overlay);
+        // Use PushOverlay to add overlays instead of removing them.
+        m_LayerStack.PushOverlay(overlay);
         overlay->OnAttach();
     }
 
