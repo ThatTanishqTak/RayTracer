@@ -1,6 +1,6 @@
 #include "SandboxLayer.h"
 
-//#include "Utilities/ResourceStats.h"
+#include "Utilities/ResourceStats.h"
 
 #include <rlImGui.h>
 #include <imgui.h>
@@ -43,9 +43,9 @@ void SandboxLayer::OnImGuiRender()
     ImGui::ProgressBar(m_RenderProgress, ImVec2(-FLT_MIN, 0.0f));
 
     // Determine tile counts based on current window size.
-    constexpr int s_TileSize = 16; // TODO: query from renderer when configurable
-    int l_TilesX = (GetScreenWidth() + s_TileSize - 1) / s_TileSize;
-    int l_TilesY = (GetScreenHeight() + s_TileSize - 1) / s_TileSize;
+    int l_TileSize = m_DisplayRenderer->GetTileSize(); // Future: expose tile sizing to the editor
+    int l_TilesX = (GetScreenWidth() + l_TileSize - 1) / l_TileSize;
+    int l_TilesY = (GetScreenHeight() + l_TileSize - 1) / l_TileSize;
     int l_TotalTiles = l_TilesX * l_TilesY;
     int l_Completed = static_cast<int>(m_RenderProgress * static_cast<float>(l_TotalTiles));
     ImGui::Text("Tiles: %d/%d", l_Completed, l_TotalTiles);
@@ -60,16 +60,17 @@ void SandboxLayer::OnImGuiRender()
     // Display CPU and memory statistics in a dedicated window.
     ImGui::Begin("Resource Usage", nullptr);
 
-    //size_t l_MemoryBytes = Engine::Utilities::ResourceStats::GetMemoryUsage();
-    //float l_MemoryMB = static_cast<float>(l_MemoryBytes) / (1024.0f * 1024.0f);
-    //float l_CPUUsage = Engine::Utilities::ResourceStats::GetCPUUsage();
-    //
-    //ImGui::Text("Memory: %.2f MB", l_MemoryMB);
-    //ImGui::Text("CPU: %.2f %%", l_CPUUsage);
+    size_t l_MemoryBytes = Engine::Utilities::ResourceStats::GetMemoryUsage();
+    float l_MemoryMB = static_cast<float>(l_MemoryBytes) / (1024.0f * 1024.0f);
+    float l_CPUUsage = Engine::Utilities::ResourceStats::GetCPUUsage();
+    
+    ImGui::Text("Memory: %.2f MB", l_MemoryMB);
+    ImGui::Text("CPU: %.2f %%", l_CPUUsage);
     ImGui::End();
 
-    // Present detailed timing for each stage of the render.
+    // Present detailed timing for each stage of the render inside its own window.
     const std::vector<Engine::RenderStep>& l_Steps = m_Renderer.GetRenderSteps();
+    ImGui::Begin("Render Steps");
     if (ImGui::BeginTable("Steps", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
         ImGui::TableSetupColumn("Stage");
@@ -78,6 +79,7 @@ void SandboxLayer::OnImGuiRender()
 
         for (const Engine::RenderStep& it_Step : l_Steps)
         {
+            // Each row lists the name of the step and its elapsed time.
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("%s", it_Step.m_Name.c_str());
@@ -88,6 +90,7 @@ void SandboxLayer::OnImGuiRender()
         // TODO: Display GPU/IO steps once available.
         ImGui::EndTable();
     }
+    ImGui::End();
 }
 
 void SandboxLayer::OnSceneRender()

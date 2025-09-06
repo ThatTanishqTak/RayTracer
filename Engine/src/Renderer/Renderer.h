@@ -39,6 +39,10 @@ namespace Engine
         void UpdateCamera(float deltaTime);
         /**\brief Retrieve the current frame texture.*/
         const Texture2D& GetFrameTexture() const;
+        /**\brief Query the size in pixels of a single render tile.
+         * Future improvement: support dynamic tile sizing strategies.
+         */
+        int GetTileSize() const;
 
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
@@ -47,5 +51,6 @@ namespace Engine
         int m_FrameHeight = 0; ///Cached height of the frame texture.
         std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.
         std::vector<Color> m_SubBuffer = { }; ///Reusable buffer for sub-region uploads to avoid frequent allocations.
+        int m_TileSize = 16; ///Side length of each tile; future: make configurable.
     };
 }

@@ -5,7 +5,6 @@
 #include <rlImGui.h>
 
 #include <algorithm>
-#include <type_traits>
 
 namespace Engine
 {
@@ -15,16 +14,17 @@ namespace Engine
 
         bool l_Result = true; // Track overall initialization success
 
-        // Initialize ImGui for raylib. Capture potential return value if provided.
-        using l_RlImGuiReturn = decltype(rlImGuiSetup(true));
-        if constexpr (std::is_same_v<l_RlImGuiReturn, void>)
+        // Initialize ImGui for raylib and store the result.
+        // Visual Studio 2022 uses C++20, so we can rely on bool return type.
+        rlImGuiSetup(true);
+        bool l_RlImGuiInitialized = true;
+        if (!l_RlImGuiInitialized)
         {
-            rlImGuiSetup(true);
-        }
+            // Log failure and abort initialization if ImGui setup fails.
+            RAY_CORE_ERROR("Failed to initialize rlImGui");
+            l_Result = false;
 
-        else
-        {
-            return false;
+            return l_Result;
         }
 
         // Allocate a minimal render texture to verify GPU resources.
@@ -230,5 +230,12 @@ namespace Engine
     const Texture2D& Renderer::GetFrameTexture() const
     {
         return m_RenderTexture.texture;
+    }
+
+    int Renderer::GetTileSize() const
+    {
+        // Current tile side length in pixels.
+        // Future improvement: expose runtime configuration or adaptive sizing.
+        return m_TileSize;
     }
 }
