@@ -33,4 +33,5 @@ private:
     Engine::Scene m_Scene{};                        /// Scene data to render.
     bool m_RequestRender{ false };                  /// Flag set when user presses Render.
     float m_RenderTime = 0.0f;                      /// Time taken to render the scene in ms.
+    float m_RenderProgress = 0.0f;                  /// Progress of current render in [0,1].
 };

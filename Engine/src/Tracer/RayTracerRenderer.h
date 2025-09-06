@@ -42,6 +42,14 @@ namespace Engine
          */
         const Image& GetFrame() const;
 
+        /**
+         * \brief Obtain the fraction of tiles finished by worker threads.
+         *
+         * Values range from 0.0f when no work has been done to 1.0f once all
+         * tiles have been processed.
+         */
+        float GetProgress() const;
+
     private:
         /**
          * \brief Worker entry point. Each thread traces cache-friendly tiles.
@@ -64,5 +72,6 @@ namespace Engine
         int m_TilesX{ 0 };                           ///< Number of tiles horizontally.
         int m_TilesY{ 0 };                           ///< Number of tiles vertically.
         int m_TotalTiles{ 0 };                       ///< Total amount of tiles in the frame.
+        std::atomic<int> m_TilesCompleted{ 0 };      ///< Tiles completed by worker threads.
     };
 }

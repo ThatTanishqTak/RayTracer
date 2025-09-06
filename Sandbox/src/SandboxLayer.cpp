@@ -3,6 +3,8 @@
 #include <rlImGui.h>
 #include <imgui.h>
 
+#include <cfloat>
+
 SandboxLayer::SandboxLayer(Engine::Renderer* displayRenderer) : Engine::Layer("SandboxLayer"), m_DisplayRenderer(displayRenderer)
 {
     // Constructor simply stores the renderer pointer.
@@ -28,11 +30,25 @@ void SandboxLayer::OnUpdate(float deltaTime)
     }
 }
 
-
 void SandboxLayer::OnImGuiRender()
 {
     ImGui::Begin("Render Stats", nullptr);
+
+    // Display the cumulative render time for the last completed frame.
     ImGui::Text("Render Time: %.2f ms", m_RenderTime);
+
+    // Show progress as a bar; width is automatic, height uses default.
+    ImGui::ProgressBar(m_RenderProgress, ImVec2(-FLT_MIN, 0.0f));
+
+    // Determine tile counts based on current window size.
+    constexpr int s_TileSize = 16; // TODO: query from renderer when configurable
+    int l_TilesX = (GetScreenWidth() + s_TileSize - 1) / s_TileSize;
+    int l_TilesY = (GetScreenHeight() + s_TileSize - 1) / s_TileSize;
+    int l_TotalTiles = l_TilesX * l_TilesY;
+    int l_Completed = static_cast<int>(m_RenderProgress * static_cast<float>(l_TotalTiles));
+    ImGui::Text("Tiles: %d/%d", l_Completed, l_TotalTiles);
+
+    // Button to trigger a new render pass.
     if (ImGui::Button("Render"))
     {
         m_RequestRender = true;

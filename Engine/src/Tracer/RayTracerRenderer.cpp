@@ -40,6 +40,7 @@ namespace Engine
         m_TilesY = (l_Height + m_TileSize - 1) / m_TileSize;
         m_TotalTiles = m_TilesX * m_TilesY;
         m_NextTile.store(0);
+        m_TilesCompleted.store(0); // Reset progress counter at the start of a new render.
 
         // Spawn one worker per hardware thread.
         unsigned int l_ThreadCount = std::thread::hardware_concurrency();
@@ -86,6 +87,17 @@ namespace Engine
         return m_Framebuffer;
     }
 
+    float RayTracerRenderer::GetProgress() const
+    {
+        // Avoid division by zero in cases where no render has been scheduled yet.
+        if (m_TotalTiles == 0)
+        {
+            return 0.0f;
+        }
+
+        return m_TilesCompleted.load() / static_cast<float>(m_TotalTiles);
+    }
+
     void RayTracerRenderer::WorkerThread(int threadID)
     {
         (void)threadID; // Thread ID currently unused; reserved for future enhancements.
@@ -127,6 +139,9 @@ namespace Engine
                     reinterpret_cast<Color*>(m_Framebuffer.data)[l_Index] = l_Color;
                 }
             }
+
+            // Atomically track how many tiles have been fully processed so far.
+            m_TilesCompleted.fetch_add(1);
         }
 
         // TODO: Add GPU compute path when available
