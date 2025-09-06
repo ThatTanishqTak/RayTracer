@@ -1,5 +1,5 @@
 #include "Renderer/Renderer.h"
-#include "Utilities/Utilities.h"
+#include "Utilities/Logging.h"
 
 #include <raylib.h>
 #include <rlImGui.h>

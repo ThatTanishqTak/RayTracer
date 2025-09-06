@@ -1,7 +1,7 @@
 #include "SandboxLayer.h"
 
 #include "Core/EntryPoint.h"
-#include "Utilities/Utilities.h"
+#include "Utilities/Logging.h"
 
 class Sandbox : public Engine::Application
 {

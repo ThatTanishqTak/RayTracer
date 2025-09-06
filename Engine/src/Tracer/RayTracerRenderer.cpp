@@ -5,7 +5,9 @@
 #include "Tracer/Ray.h"
 
 #include <raymath.h>
+
 #include <algorithm>
+#include <chrono>
 
 namespace Engine
 {
@@ -16,6 +18,11 @@ namespace Engine
             // Avoid starting multiple render jobs simultaneously.
             return;
         }
+
+        // Reset previous step timings for a fresh render pass.
+        m_Steps.clear();
+
+        std::chrono::high_resolution_clock::time_point l_SceneStart = std::chrono::high_resolution_clock::now();
 
         m_CurrentScene = &scene;
         m_CurrentCamera = camera; // Store a copy for consistent access across threads.
@@ -55,6 +62,14 @@ namespace Engine
             // Each thread executes WorkerThread with its ID.
             m_Workers.emplace_back([this, it_Thread]() { WorkerThread(static_cast<int>(it_Thread)); });
         }
+
+        std::chrono::high_resolution_clock::time_point l_SceneEnd = std::chrono::high_resolution_clock::now();
+        double l_SceneMs = std::chrono::duration<double, std::milli>(l_SceneEnd - l_SceneStart).count();
+        m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs });
+
+        // Record start time for tile processing stage.
+        m_TileProcessingStart = l_SceneEnd;
+        m_WorkersFinished.store(0);
     }
 
     void RayTracerRenderer::StopRender()
@@ -96,6 +111,11 @@ namespace Engine
         }
 
         return m_TilesCompleted.load() / static_cast<float>(m_TotalTiles);
+    }
+
+    const std::vector<RenderStep>& RayTracerRenderer::GetRenderSteps() const
+    {
+        return m_Steps;
     }
 
     void RayTracerRenderer::WorkerThread(int threadID)
@@ -142,6 +162,13 @@ namespace Engine
 
             // Atomically track how many tiles have been fully processed so far.
             m_TilesCompleted.fetch_add(1);
+        }
+
+        std::chrono::high_resolution_clock::time_point l_End = std::chrono::high_resolution_clock::now();
+        if (m_WorkersFinished.fetch_add(1) + 1 == static_cast<int>(m_Workers.size()))
+        {
+            double l_ProcessMs = std::chrono::duration<double, std::milli>(l_End - m_TileProcessingStart).count();
+            m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs });
         }
 
         // TODO: Add GPU compute path when available

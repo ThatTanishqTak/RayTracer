@@ -43,4 +43,5 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     opengl32
     gdi32
     winmm
+    psapi
 )

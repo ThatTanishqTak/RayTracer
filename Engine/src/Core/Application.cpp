@@ -1,5 +1,5 @@
 #include "Core/Application.h"
-#include "Utilities/Utilities.h"
+#include "Utilities/Logging.h"
 
 #include <stdexcept>
 

@@ -1,5 +1,7 @@
 #include "SandboxLayer.h"
 
+//#include "Utilities/ResourceStats.h"
+
 #include <rlImGui.h>
 #include <imgui.h>
 
@@ -54,6 +56,38 @@ void SandboxLayer::OnImGuiRender()
         m_RequestRender = true;
     }
     ImGui::End();
+
+    // Display CPU and memory statistics in a dedicated window.
+    ImGui::Begin("Resource Usage", nullptr);
+
+    //size_t l_MemoryBytes = Engine::Utilities::ResourceStats::GetMemoryUsage();
+    //float l_MemoryMB = static_cast<float>(l_MemoryBytes) / (1024.0f * 1024.0f);
+    //float l_CPUUsage = Engine::Utilities::ResourceStats::GetCPUUsage();
+    //
+    //ImGui::Text("Memory: %.2f MB", l_MemoryMB);
+    //ImGui::Text("CPU: %.2f %%", l_CPUUsage);
+    ImGui::End();
+
+    // Present detailed timing for each stage of the render.
+    const std::vector<Engine::RenderStep>& l_Steps = m_Renderer.GetRenderSteps();
+    if (ImGui::BeginTable("Steps", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    {
+        ImGui::TableSetupColumn("Stage");
+        ImGui::TableSetupColumn("Time (ms)");
+        ImGui::TableHeadersRow();
+
+        for (const Engine::RenderStep& it_Step : l_Steps)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("%s", it_Step.m_Name.c_str());
+            ImGui::TableNextColumn();
+            ImGui::Text("%.2f", it_Step.m_ElapsedMs);
+        }
+
+        // TODO: Display GPU/IO steps once available.
+        ImGui::EndTable();
+    }
 }
 
 void SandboxLayer::OnSceneRender()

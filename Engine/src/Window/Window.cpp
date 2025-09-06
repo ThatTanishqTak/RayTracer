@@ -1,5 +1,5 @@
 #include "Window/Window.h"
-#include "Utilities/Utilities.h"
+#include "Utilities/Logging.h"
 
 #include <raylib.h>
 
