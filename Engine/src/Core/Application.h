@@ -6,7 +6,6 @@
 
 #include <raylib.h>
 #include <imgui.h>
-#include <rlImGui.h>
 
 #include <sstream>
 #include <memory>
@@ -62,6 +61,16 @@ namespace Engine
             // Main loop
             while (!m_Window->ShouldClose())
             {
+                // Detect window size changes and update the renderer to match.
+                if (IsWindowResized())
+                {
+                    int l_Width = GetScreenWidth();
+                    int l_Height = GetScreenHeight();
+                    
+                    m_Renderer->ResizeFrameTexture(l_Width, l_Height); // Prevent image clipping
+                    // Future improvement: adjust camera aspect ratio on resize.
+                }
+
                 float l_DeltaTime = GetFrameTime();
                 m_Renderer->UpdateCamera(l_DeltaTime); // Handle camera navigation
 
@@ -75,12 +84,12 @@ namespace Engine
                     }
 
                     // ImGui phase
-                    rlImGuiBegin();
+                    //rlImGuiBegin();
                     for (Layer* it_Layer : m_LayerStack)
                     {
                         it_Layer->OnImGuiRender();
                     }
-                    rlImGuiEnd();
+                    //rlImGuiEnd();
                 }
                 m_Renderer->EndFrame();
 

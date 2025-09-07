@@ -19,8 +19,12 @@ namespace Engine
             return;
         }
 
-        // Reset previous step timings for a fresh render pass.
-        m_Steps.clear();
+        // Reset previous step timings for a fresh render pass. Guarded to
+        // prevent concurrent access while workers may still be finishing.
+        {
+            std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+            m_Steps.clear();
+        }
 
         std::chrono::high_resolution_clock::time_point l_SceneStart = std::chrono::high_resolution_clock::now();
 
@@ -65,7 +69,11 @@ namespace Engine
 
         std::chrono::high_resolution_clock::time_point l_SceneEnd = std::chrono::high_resolution_clock::now();
         double l_SceneMs = std::chrono::duration<double, std::milli>(l_SceneEnd - l_SceneStart).count();
-        m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs });
+        // Store the scene setup time so the UI can present it later.
+        {
+            std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+            m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs });
+        }
 
         // Record start time for tile processing stage.
         m_TileProcessingStart = l_SceneEnd;
@@ -113,8 +121,11 @@ namespace Engine
         return m_TilesCompleted.load() / static_cast<float>(m_TotalTiles);
     }
 
-    const std::vector<RenderStep>& RayTracerRenderer::GetRenderSteps() const
+    std::vector<RenderStep> RayTracerRenderer::GetRenderSteps() const
     {
+        // Copy the step list under lock to avoid exposing mutable state.
+        std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+
         return m_Steps;
     }
 
@@ -149,10 +160,10 @@ namespace Engine
 
                     Color l_Color
                     {
-                        static_cast<unsigned char>(Clamp(l_ColorVec.x, 0.0f, 1.0f) * 255.0f),
-                        static_cast<unsigned char>(Clamp(l_ColorVec.y, 0.0f, 1.0f) * 255.0f),
-                        static_cast<unsigned char>(Clamp(l_ColorVec.z, 0.0f, 1.0f) * 255.0f),
-                        255
+                        static_cast<unsigned char>(Clamp(l_ColorVec.x, 0.0f, 1.0f) * 255.0f),   // R
+                        static_cast<unsigned char>(Clamp(l_ColorVec.y, 0.0f, 1.0f) * 255.0f),   // G
+                        static_cast<unsigned char>(Clamp(l_ColorVec.z, 0.0f, 1.0f) * 255.0f),   // B
+                        255                                                                     // A
                     };
 
                     size_t l_Index = static_cast<size_t>(it_Y) * static_cast<size_t>(l_Width) + static_cast<size_t>(it_X);
@@ -168,7 +179,12 @@ namespace Engine
         if (m_WorkersFinished.fetch_add(1) + 1 == static_cast<int>(m_Workers.size()))
         {
             double l_ProcessMs = std::chrono::duration<double, std::milli>(l_End - m_TileProcessingStart).count();
-            m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs });
+            // Worker threads record the total tile processing time once all
+            // threads finish. Protect the shared list with a mutex.
+            {
+                std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+                m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs });
+            }
         }
 
         // TODO: Add GPU compute path when available

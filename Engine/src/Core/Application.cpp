@@ -29,7 +29,8 @@ namespace Engine
 
         // Construct the renderer and set it up for rendering.
         m_Renderer = std::make_shared<Renderer>();
-        const bool l_RendererInitialized = m_Renderer->Initialize();
+        // Initialize the renderer using the current window dimensions to avoid clipped output.
+        const bool l_RendererInitialized = m_Renderer->Initialize(specifications.Width, specifications.Height);
         if (!l_RendererInitialized)
         {
             RAY_CORE_ERROR("Failed to initialize renderer");
@@ -37,6 +38,7 @@ namespace Engine
             // Clean up previously initialized subsystems to avoid leaks.
             m_Renderer->Shutdown();
             m_Renderer.reset();
+
             m_Window->Shutdown();
             m_Window.reset();
 

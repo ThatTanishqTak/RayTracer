@@ -5,6 +5,7 @@
 #include <atomic>
 #include <string>
 #include <chrono>
+#include <mutex>
 
 #include <raylib.h>
 
@@ -62,9 +63,14 @@ namespace Engine
         float GetProgress() const;
 
         /**
-         * \brief Access the list of recorded render steps.
+         * \brief Retrieve a thread-safe copy of the recorded render steps.
+         *
+         * The internal step list is protected by a mutex to prevent data races
+         * when worker threads record their timing information. This method
+         * acquires the mutex and returns a snapshot of the data for the caller
+         * to inspect without holding the lock.
          */
-        const std::vector<RenderStep>& GetRenderSteps() const;
+        std::vector<RenderStep> GetRenderSteps() const;
 
     private:
         /**
@@ -90,7 +96,8 @@ namespace Engine
         int m_TotalTiles{ 0 };                           ///< Total amount of tiles in the frame.
         std::atomic<int> m_TilesCompleted{ 0 };          ///< Tiles completed by worker threads.
 
-        std::vector<RenderStep> m_Steps;                 ///< Chronological steps recorded during rendering. TODO: make thread-safe.
+        std::vector<RenderStep> m_Steps;                 ///< Chronological steps recorded during rendering.
+        mutable std::mutex m_StepsMutex;                 ///< Protects access to m_Steps for thread safety.
         std::chrono::high_resolution_clock::time_point m_TileProcessingStart{}; ///< Start time for tile processing.
         std::atomic<int> m_WorkersFinished{ 0 };         ///< Number of workers that finished tracing.
     };

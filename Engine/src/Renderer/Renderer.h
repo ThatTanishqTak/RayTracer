@@ -13,8 +13,8 @@ namespace Engine
     class Renderer
     {
     public:
-        /**\brief Initialize renderer state and prepare for drawing.*/
-        bool Initialize();
+        /**\brief Initialize renderer state and prepare for drawing using the window dimensions.*/
+        bool Initialize(int width, int height);
         /**\brief Release resources allocated by the renderer.*/
         void Shutdown();
 

@@ -2,40 +2,39 @@
 #include "Utilities/Logging.h"
 
 #include <raylib.h>
-#include <rlImGui.h>
 
 #include <algorithm>
+#include <format>
 
 namespace Engine
 {
-    bool Renderer::Initialize()
+    bool Renderer::Initialize(int width, int height)
     {
         RAY_CORE_INFO("Initializing the renderer");
 
         bool l_Result = true; // Track overall initialization success
 
         // Initialize ImGui for raylib and store the result.
-        // Visual Studio 2022 uses C++20, so we can rely on bool return type.
-        rlImGuiSetup(true);
-        bool l_RlImGuiInitialized = true;
-        if (!l_RlImGuiInitialized)
-        {
-            // Log failure and abort initialization if ImGui setup fails.
-            RAY_CORE_ERROR("Failed to initialize rlImGui");
-            l_Result = false;
+        //rlImGuiSetup(true);
+        //bool l_RlImGuiInitialized = true;
+        //if (!l_RlImGuiInitialized)
+        //{
+        //    // Log failure and abort initialization if ImGui setup fails.
+        //    RAY_CORE_ERROR("Failed to initialize rlImGui");
+        //    l_Result = false;
 
-            return l_Result;
-        }
+        //    return l_Result;
+        //}
 
-        // Allocate a minimal render texture to verify GPU resources.
-        if (l_Result)
-        {
-            l_Result = ResizeFrameTexture(1, 1);
-        }
+        //// Allocate a render texture matching the current window size.
+        //if (l_Result)
+        //{
+        //    l_Result = ResizeFrameTexture(width, height);
+        //}
 
-        // Future improvement: provide detailed error codes instead of a simple boolean.
+        //// Future improvement: provide detailed error codes instead of a simple boolean.
 
-        RAY_CORE_INFO("Renderer initialized");
+        //RAY_CORE_INFO("Renderer initialized");
 
         return l_Result;
     }
@@ -51,7 +50,7 @@ namespace Engine
         }
 
         // Tear down ImGui integration.
-        rlImGuiShutdown();
+        //rlImGuiShutdown();
 
         RAY_CORE_INFO("Renderer shutdown complete");
     }
@@ -107,7 +106,9 @@ namespace Engine
         RenderTexture2D l_NewTexture = LoadRenderTexture(width, height);
         if (l_NewTexture.id == 0)
         {
-            RAY_CORE_ERROR("Failed to allocate render texture %d x %d", width, height);
+            // Preformat message to leverage C++20 formatting and avoid macro-specific format strings
+            std::string l_Message = std::format("Failed to allocate render texture {} x {}", width, height);
+            RAY_CORE_ERROR(l_Message);
 
             m_FrameWidth = 0;
             m_FrameHeight = 0;

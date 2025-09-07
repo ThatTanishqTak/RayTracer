@@ -1,5 +1,10 @@
 #pragma once
 
+#include <cstdlib>
+#include <format>
+#include <string>
+#include <string_view>
+
 namespace Engine
 {
     namespace Utilities
@@ -26,43 +31,71 @@ namespace Engine
             };
 
             /**\brief Log an informational message.*/
-            static void LogInfo(LogType type, const char* message);
+            template<typename... Args>
+            static void LogInfo(LogType type, std::string_view format, Args&&... a_Args)
+            {
+                Log(type, LogLevel::INFO, format, std::forward<Args>(a_Args)...);
+            }
+
             /**\brief Log a warning message.*/
-            static void LogWarning(LogType type, const char* message);
+            template<typename... Args>
+            static void LogWarning(LogType type, std::string_view format, Args&&... a_Args)
+            {
+                Log(type, LogLevel::WARNING, format, std::forward<Args>(a_Args)...);
+            }
+
             /**\brief Log an error message.*/
-            static void LogError(LogType type, const char* message);
+            template<typename... Args>
+            static void LogError(LogType type, std::string_view format, Args&&... a_Args)
+            {
+                Log(type, LogLevel::ERROR, format, std::forward<Args>(a_Args)...);
+            }
 
             /**\brief Abort execution if condition is false and report the error.*/
-            static void Assert(LogType type, bool condition, const char* message);
+            template<typename... Args>
+            static void Assert(LogType type, bool condition, std::string_view format, Args&&... a_Args)
+            {
+                if (!condition)
+                {
+                    Log(type, LogLevel::ERROR, format, std::forward<Args>(a_Args)...);
+                    std::abort();
+                }
+            }
 
         private:
             /**\brief Shared logging implementation for all severity levels.*/
-            static void Log(LogType type, LogLevel level, const char* message);
+            static void Log(LogType type, LogLevel level, const std::string& message);
+
+            template<typename... Args>
+            static void Log(LogType type, LogLevel level, std::string_view format, Args&&... a_Args)
+            {
+                std::string l_Message = std::vformat(format, std::make_format_args(a_Args...));
+                Log(type, level, l_Message);
+            }
         };
     }
 
 #if _DEBUG
-#define RAY_ASSERT(condition, message) do { \
+#define RAY_ASSERT(condition, ...) do { \
     /* Assert with CORE log type; do-while wraps for safe single-statement usage */ \
-    ::Engine::Utilities::Logging::Assert(::Engine::Utilities::Logging::LogType::CORE, (condition), (message)); \
+    ::Engine::Utilities::Logging::Assert(::Engine::Utilities::Logging::LogType::CORE, (condition), __VA_ARGS__); \
 } while (0)
 
-#define RAY_CORE_INFO(message) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CORE, message)
-#define RAY_CORE_WARNING(message) ::Engine::Utilities::Logging::LogWarning(::Engine::Utilities::Logging::LogType::CORE, message)
-#define RAY_CORE_ERROR(message) ::Engine::Utilities::Logging::LogError(::Engine::Utilities::Logging::LogType::CORE, message)
+#define RAY_CORE_INFO(...) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CORE, __VA_ARGS__)
+#define RAY_CORE_WARNING(...) ::Engine::Utilities::Logging::LogWarning(::Engine::Utilities::Logging::LogType::CORE, __VA_ARGS__)
+#define RAY_CORE_ERROR(...) ::Engine::Utilities::Logging::LogError(::Engine::Utilities::Logging::LogType::CORE, __VA_ARGS__)
 
-#define RAY_INFO(message) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CLIENT, message)
-#define RAY_WARNING(message) ::Engine::Utilities::Logging::LogWarning(::Engine::Utilities::Logging::LogType::CLIENT, message)
-#define RAY_ERROR(message) ::Engine::Utilities::Logging::LogError(::Engine::Utilities::Logging::LogType::CLIENT, message)
+#define RAY_INFO(...) ::Engine::Utilities::Logging::LogInfo(::Engine::Utilities::Logging::LogType::CLIENT, __VA_ARGS__)
+#define RAY_WARNING(...) ::Engine::Utilities::Logging::LogWarning(::Engine::Utilities::Logging::LogType::CLIENT, __VA_ARGS__)
+#define RAY_ERROR(...) ::Engine::Utilities::Logging::LogError(::Engine::Utilities::Logging::LogType::CLIENT, __VA_ARGS__)
 #else
-#define RAY_ASSERT(condition, message)
-#define RAY_CORE_INFO(message)
-#define RAY_CORE_WARNING(message)
-#define RAY_CORE_ERROR(message)
+#define RAY_ASSERT(condition, ...)
+#define RAY_CORE_INFO(...)
+#define RAY_CORE_WARNING(...)
+#define RAY_CORE_ERROR(...)
 
-#define RAY_INFO(message)
-#define RAY_WARNING(message)
-#define RAY_ERROR(message)
+#define RAY_INFO(...)
+#define RAY_WARNING(...)
+#define RAY_ERROR(...)
 #endif
-
 }
