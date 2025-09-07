@@ -1,6 +1,8 @@
 #include "Core/Application.h"
 #include "Utilities/Logging.h"
 
+#include <rlImGui.h>
+
 #include <stdexcept>
 
 namespace Engine
@@ -57,11 +59,13 @@ namespace Engine
         // Clean up resources in reverse order of creation.
         RAY_CORE_INFO("-------SHUTING DOWN APPLICATION-------");
 
-        // Remove overlay to avoid double deletion.
-        m_LayerStack.PopOverlay(m_ImGuiLayer.get());
+        if (m_ImGuiLayer)
+        {
+            m_LayerStack.PopOverlay(m_ImGuiLayer.get());
+            m_ImGuiLayer.reset();
 
-        // Delete the ImGui layer once.
-        m_ImGuiLayer.reset();
+            rlImGuiShutdown();
+        }
 
         if (m_Renderer)
         {

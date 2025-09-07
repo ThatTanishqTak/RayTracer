@@ -34,10 +34,6 @@ file(GLOB_RECURSE ENGINE_SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
-# Ensure ImGui layer gets built (you already listed it explicitly; keep it)
-list(APPEND ENGINE_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ImGuiLayer.cpp)
-list(REMOVE_DUPLICATES ENGINE_SOURCE)
-
 add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCE})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -48,5 +44,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
-    rlimgui         # <-- brings in imgui + raylib transitively
+    rlimgui
 )

@@ -20,6 +20,7 @@ namespace Engine
             {
                 return static_cast<size_t>(l_Counters.WorkingSetSize);
             }
+
             return 0;
         }
 

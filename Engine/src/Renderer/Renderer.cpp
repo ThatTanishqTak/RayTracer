@@ -2,6 +2,7 @@
 #include "Utilities/Logging.h"
 
 #include <raylib.h>
+#include <rlImGui.h>
 
 #include <algorithm>
 #include <format>
@@ -15,26 +16,26 @@ namespace Engine
         bool l_Result = true; // Track overall initialization success
 
         // Initialize ImGui for raylib and store the result.
-        //rlImGuiSetup(true);
-        //bool l_RlImGuiInitialized = true;
-        //if (!l_RlImGuiInitialized)
-        //{
-        //    // Log failure and abort initialization if ImGui setup fails.
-        //    RAY_CORE_ERROR("Failed to initialize rlImGui");
-        //    l_Result = false;
+        rlImGuiSetup(true);
+        bool l_RlImGuiInitialized = true;
+        if (!l_RlImGuiInitialized)
+        {
+            // Log failure and abort initialization if ImGui setup fails.
+            RAY_CORE_ERROR("Failed to initialize rlImGui");
+            l_Result = false;
 
-        //    return l_Result;
-        //}
+            return l_Result;
+        }
 
-        //// Allocate a render texture matching the current window size.
-        //if (l_Result)
-        //{
-        //    l_Result = ResizeFrameTexture(width, height);
-        //}
+        // Allocate a render texture matching the current window size.
+        if (l_Result)
+        {
+            l_Result = ResizeFrameTexture(width, height);
+        }
 
-        //// Future improvement: provide detailed error codes instead of a simple boolean.
+        // Future improvement: provide detailed error codes instead of a simple boolean.
 
-        //RAY_CORE_INFO("Renderer initialized");
+        RAY_CORE_INFO("Renderer initialized");
 
         return l_Result;
     }

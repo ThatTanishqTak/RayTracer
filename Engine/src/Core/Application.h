@@ -58,16 +58,21 @@ namespace Engine
          */
         virtual void Run()
         {
+            // Initialize last window position
+            Vector2 currentPos = GetWindowPosition();
+            m_LastWindowPos = currentPos;
+
             // Main loop
             while (!m_Window->ShouldClose())
             {
-                // Detect window size changes and update the renderer to match.
-                if (IsWindowResized())
+                // Detect window size changes and update the renderer to match
+                currentPos = GetWindowPosition();
+                if (IsWindowResized() || m_LastWindowPos.x != currentPos.x || m_LastWindowPos.y != currentPos.y)
                 {
                     int l_Width = GetScreenWidth();
                     int l_Height = GetScreenHeight();
-                    
                     m_Renderer->ResizeFrameTexture(l_Width, l_Height); // Prevent image clipping
+                    m_LastWindowPos = currentPos; // Update last position
                     // Future improvement: adjust camera aspect ratio on resize.
                 }
 
@@ -107,5 +112,6 @@ namespace Engine
         std::unique_ptr<ImGuiLayer> m_ImGuiLayer; /// Overlay responsible for ImGui rendering.
 
         LayerStack m_LayerStack; /// Ordered collection of active layers.
+        Vector2 m_LastWindowPos; /// Tracks the last window position to detect movement.
     };
 }

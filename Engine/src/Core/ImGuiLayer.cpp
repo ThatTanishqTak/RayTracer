@@ -1,5 +1,7 @@
 #include "Core/ImGuiLayer.h"
 
+#include <rlImGui.h>
+
 namespace Engine
 {
     void ImGuiLayer::OnAttach()
@@ -24,13 +26,11 @@ namespace Engine
 
     void ImGuiLayer::BeginFrame()
     {
-        ImGui_ImplRaylib_NewFrame();
-        ImGui::NewFrame();
+        rlImGuiBegin();
     }
 
     void ImGuiLayer::EndFrame()
     {
-        ImGui::Render();
-        ImGui_ImplRaylib_RenderDrawData(ImGui::GetDrawData());
+        rlImGuiEnd();
     }
 }
