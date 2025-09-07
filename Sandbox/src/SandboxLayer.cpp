@@ -91,11 +91,15 @@ void SandboxLayer::OnImGuiRender()
     // with a mutex so this snapshot is safe to iterate while threads may still
     // be producing data.
     std::vector<Engine::RenderStep> l_Steps = m_Renderer.GetRenderSteps();
-    ImGui::Begin("Render Steps");
+    // Set a sensible default width and allow window to grow with content
+    ImGui::SetNextWindowSize(ImVec2(320.0f, 0.0f), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Render Steps", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     if (ImGui::BeginTable("Steps", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
-        ImGui::TableSetupColumn("Stage");
-        ImGui::TableSetupColumn("Time (ms)");
+        // Stretch columns so they fill available space
+        ImGui::TableSetupColumn("Stage", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Time (ms)", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableHeadersRow();
         ImGui::TableHeadersRow();
 
         for (const Engine::RenderStep& it_Step : l_Steps)
