@@ -57,6 +57,12 @@ namespace Engine
         // Clean up resources in reverse order of creation.
         RAY_CORE_INFO("-------SHUTING DOWN APPLICATION-------");
 
+        // Remove overlay to avoid double deletion.
+        m_LayerStack.PopOverlay(m_ImGuiLayer.get());
+
+        // Delete the ImGui layer once.
+        m_ImGuiLayer.reset();
+
         if (m_Renderer)
         {
             m_Renderer->Shutdown();
