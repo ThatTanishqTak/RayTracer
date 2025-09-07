@@ -1,53 +1,52 @@
-# ------- ENGINE -------
-
 project(Engine LANGUAGES CXX)
 
-add_subdirectory(vendor/raylib)
+# Raylib
+add_subdirectory(vendor/raylib) # provides target: raylib
 
-file(GLOB IMGUI_SOURCE
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui_draw.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui_tables.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/imgui_widgets.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/rlImGui/imgui_impl_raylib.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/rlImGui/imgui_impl_raylib.h
-)
-
+# ---- ImGui (core) ----
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui)
 add_library(imgui STATIC
-        ${IMGUI_SOURCE}
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
+    # Optional but handy for testing:
+    ${IMGUI_DIR}/imgui_demo.cpp
 )
-
 target_include_directories(imgui PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/rlImGui
-        ${CMAKE_CURRENT_SOURCE_DIR}/vendor/raylib/src
+    ${IMGUI_DIR}
 )
 
+# ---- rlImGui backend ----
+set(RLIMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/rlImGui)
+add_library(rlimgui STATIC
+    ${RLIMGUI_DIR}/rlImGui.cpp
+)
+target_include_directories(rlimgui PUBLIC
+    ${RLIMGUI_DIR}
+    ${IMGUI_DIR}
+)
+target_link_libraries(rlimgui PUBLIC imgui raylib)
+
+# ---- Engine sources ----
 file(GLOB_RECURSE ENGINE_SOURCE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
 )
 
-list(APPEND ENGINE_SOURCE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ImGuiLayer.cpp)
+# Ensure ImGui layer gets built (you already listed it explicitly; keep it)
+list(APPEND ENGINE_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/src/Core/ImGuiLayer.cpp)
 list(REMOVE_DUPLICATES ENGINE_SOURCE)
 
-add_library(${PROJECT_NAME} STATIC
-	${ENGINE_SOURCE}	
-)
+add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCE})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/raylib/src>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/rlImGui>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/vendor/raylib/src>
+    $<BUILD_INTERFACE:${IMGUI_DIR}>
+    $<BUILD_INTERFACE:${RLIMGUI_DIR}>
 )
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
-	imgui
-    raylib
-    opengl32
-    gdi32
-    winmm
-    psapi
+    rlimgui         # <-- brings in imgui + raylib transitively
 )
