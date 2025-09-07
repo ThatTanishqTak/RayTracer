@@ -14,25 +14,35 @@ namespace Engine
         m_Camera.projection = CAMERA_PERSPECTIVE;
     }
 
-
     void CameraController::Update(float deltaTime)
     {
+        ImGuiIO& l_IO = ImGui::GetIO(); // Query ImGui for current UI state
+        bool l_CaptureInput = l_IO.WantCaptureMouse || l_IO.WantCaptureKeyboard;
+
+        // Camera controls are paused when the UI has focus.
+        if (l_CaptureInput)
+        {
+            return;
+        }
+
         // Track cursor state so locking only happens on button state changes.
         // Remember the mouse location so the cursor can return after unlocking.
-        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+        if (!l_CaptureInput && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
         {
             // Capture the cursor position prior to locking for later restoration.
             Vector2 l_PreviousMousePos = GetMousePosition();
             m_PreviousMousePos = l_PreviousMousePos;
             DisableCursor();
+
             m_IsCursorLocked = true;
         }
 
         // On release, unlock the cursor and restore the previous position to avoid snapping.
-        if (IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
+        if (!l_CaptureInput && IsMouseButtonReleased(MOUSE_BUTTON_RIGHT))
         {
             EnableCursor();
             SetMousePosition(static_cast<int>(m_PreviousMousePos.x), static_cast<int>(m_PreviousMousePos.y));
+
             m_IsCursorLocked = false;
         }
 

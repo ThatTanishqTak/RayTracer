@@ -1,6 +1,7 @@
 #pragma once
 
 #include <raylib.h>
+#include <imgui.h>
 
 namespace Engine
 {
@@ -14,7 +15,11 @@ namespace Engine
     public:
         /** \brief Construct controller with a default perspective camera. */
         CameraController();
-        /** \brief Update the internal camera based on user input. */
+        /** \brief Update the internal camera based on user input.
+         *
+         * Camera controls are skipped when the UI captures keyboard or mouse
+         * input.
+         */
         void Update(float deltaTime);
 
         /** \brief Retrieve the current camera for read-only access. */
