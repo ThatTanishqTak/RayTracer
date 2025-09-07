@@ -3,9 +3,9 @@
 #include "Window/Window.h"
 #include "Core/LayerStack.h"
 #include "Renderer/Renderer.h"
+#include "Core/ImGuiLayer.h"
 
 #include <raylib.h>
-#include <imgui.h>
 
 #include <sstream>
 #include <memory>
@@ -84,12 +84,12 @@ namespace Engine
                     }
 
                     // ImGui phase
-                    //rlImGuiBegin();
+                    m_ImGuiLayer->BeginFrame();
                     for (Layer* it_Layer : m_LayerStack)
                     {
                         it_Layer->OnImGuiRender();
                     }
-                    //rlImGuiEnd();
+                    m_ImGuiLayer->EndFrame();
                 }
                 m_Renderer->EndFrame();
 
@@ -104,6 +104,7 @@ namespace Engine
     private:
         std::unique_ptr<Window> m_Window; /// Handle to the OS window instance.
         std::shared_ptr<Renderer> m_Renderer; /// Renderer responsible for drawing.
+        std::unique_ptr<ImGuiLayer> m_ImGuiLayer; /// Overlay responsible for ImGui rendering.
 
         LayerStack m_LayerStack; /// Ordered collection of active layers.
     };

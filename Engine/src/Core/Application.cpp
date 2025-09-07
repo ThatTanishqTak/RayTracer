@@ -45,6 +45,10 @@ namespace Engine
             // TODO: Allow retrying renderer initialization without destroying the application object.
         }
 
+        // Create and register the ImGui overlay layer.
+        m_ImGuiLayer = std::make_unique<ImGuiLayer>();
+        PushOverlay(m_ImGuiLayer.get());
+
         RAY_CORE_INFO("-------APPLICATION INITIALIZED-------");
     }
 
