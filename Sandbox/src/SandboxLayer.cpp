@@ -104,7 +104,9 @@ void SandboxLayer::OnImGuiRender()
     ImGui::Begin("Scene", nullptr);
     ImVec2 l_Available = ImGui::GetContentRegionAvail();
     const Texture2D& l_Texture = m_DisplayRenderer->GetFrameTexture();
-    rlImGuiImageSize(l_Texture, l_Available.x, l_Available.y); // TODO: add camera gizmos
+    // rlImGuiImageSize expects a pointer to the texture and integer dimensions,
+    // so the available float size is cast accordingly.
+    rlImGuiImageSize(&l_Texture, static_cast<int>(l_Available.x), static_cast<int>(l_Available.y)); // TODO: add camera gizmos
     ImGui::End();
 
     ImGui::Begin("Render Stats", nullptr);
