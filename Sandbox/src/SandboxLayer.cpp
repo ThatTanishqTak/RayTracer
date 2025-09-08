@@ -21,6 +21,7 @@
 #include <Renderer/Material.h>
 
 #include <imgui.h>
+#include <rlImGui.h>
 
 #include <cfloat>
 #include <memory>
@@ -96,6 +97,16 @@ void SandboxLayer::OnUpdate(float deltaTime)
 
 void SandboxLayer::OnImGuiRender()
 {
+    // Create a dock space for ImGui windows; older ImGui versions require an explicit viewport ID.
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID, ImGui::GetMainViewport());
+
+    // Scene viewport displaying the renderer's output texture.
+    ImGui::Begin("Scene", nullptr);
+    ImVec2 l_Available = ImGui::GetContentRegionAvail();
+    const Texture2D& l_Texture = m_DisplayRenderer->GetFrameTexture();
+    rlImGuiImageSize(l_Texture, l_Available.x, l_Available.y); // TODO: add camera gizmos
+    ImGui::End();
+
     ImGui::Begin("Render Stats", nullptr);
 
     // Show progress as a bar; width is automatic, height uses default.
@@ -183,10 +194,6 @@ void SandboxLayer::OnSceneRender()
         m_DisplayRenderer->End3D();
     }
 
-    // Blit whichever image the display renderer currently holds to the screen.
-    const Texture2D& l_Texture = m_DisplayRenderer->GetFrameTexture();
-    Rectangle l_Source{ 0.0f, 0.0f, static_cast<float>(l_Texture.width), static_cast<float>(-l_Texture.height) };
-    DrawTextureRec(l_Texture, l_Source, Vector2{ 0.0f, 0.0f }, WHITE);
-
-    // TODO: Support pause/resume and saving final image
+    // The render texture is now presented in the Scene viewport; no direct screen blit.
+    // TODO: Support pause/resume, saving the final image, and interactive viewport tools.
 }
