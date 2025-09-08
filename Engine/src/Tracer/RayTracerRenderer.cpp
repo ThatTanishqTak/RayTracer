@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 
 namespace Engine
 {
@@ -137,6 +138,19 @@ namespace Engine
         int l_Width = m_Framebuffer.width;
         int l_Height = m_Framebuffer.height;
 
+        // Precompute camera basis vectors and projection parameters once per thread.
+        // These form an orthonormal basis from the camera orientation and scale the
+        // normalized device coordinates to the correct field of view. The math here
+        // lays the groundwork for future features like depth of field or motion
+        // blur by establishing a precise mapping from pixel to world-space ray.
+        Vector3 l_Forward = Vector3Normalize(Vector3Subtract(m_CurrentCamera.target, m_CurrentCamera.position));
+        Vector3 l_Right = Vector3Normalize(Vector3CrossProduct(l_Forward, m_CurrentCamera.up));
+        Vector3 l_Up = Vector3CrossProduct(l_Right, l_Forward);
+
+        float l_FovY = m_CurrentCamera.fovy * DEG2RAD;
+        float l_TanFovY = tanf(l_FovY * 0.5f);
+        float l_TanFovX = l_TanFovY * static_cast<float>(l_Width) / static_cast<float>(l_Height);
+
         while (!m_StopRequested)
         {
             int l_TileIndex = m_NextTile.fetch_add(1);
@@ -154,10 +168,16 @@ namespace Engine
             {
                 for (int it_X = l_TileX; it_X < l_MaxX; ++it_X)
                 {
-                    // Placeholder ray generation. A full implementation would derive the ray
-                    // from the camera parameters and image plane coordinates using
-                    // m_CurrentCamera and m_CurrentScene.
-                    Ray l_Ray(Vector3{}, Vector3{ 0.0f, 0.0f, -1.0f });
+                    // Convert pixel coordinates to Normalized Device Coordinates in [-1, 1].
+                    float l_NdcX = ((static_cast<float>(it_X) + 0.5f) / static_cast<float>(l_Width)) * 2.0f - 1.0f;
+                    float l_NdcY = 1.0f - ((static_cast<float>(it_Y) + 0.5f) / static_cast<float>(l_Height)) * 2.0f;
+
+                    // Ray direction through the pixel on the virtual image plane. The result
+                    // is normalized to maintain consistent energy and to facilitate future
+                    // extensions like stochastic sampling for effects such as motion blur.
+                    Vector3 l_PixelDir = Vector3Normalize(Vector3Add(Vector3Add(l_Forward, Vector3Scale(l_Right, l_NdcX * l_TanFovX)),Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
+
+                    Ray l_Ray(m_CurrentCamera.position, l_PixelDir);
                     Vector3 l_ColorVec = RayColor(l_Ray, m_CurrentScene->GetBVH(), 1);
 
                     Color l_Color
