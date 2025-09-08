@@ -25,5 +25,16 @@ namespace Engine
         void BeginFrame();
         /**\brief Finalize rendering for the current ImGui frame.*/
         void EndFrame();
+
+    private:
+        /**\brief Release all ImGui textures before shutdown.
+         *
+         * Iterates over textures registered with ImGui's platform
+         * interface and frees their Raylib resources. This prevents
+         * access violations when the ImGui context is destroyed.
+         * Future improvement: expose texture management to a dedicated
+         * renderer or resource manager.
+         */
+        void CleanupTextures();
     };
 }

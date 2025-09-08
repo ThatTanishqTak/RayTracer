@@ -74,7 +74,7 @@ void SandboxLayer::OnImGuiRender()
     ImGui::Begin("Render Stats", nullptr);
 
     // Display the cumulative render time for the last completed frame.
-    ImGui::Text("Render Time: %.2f ms", m_RenderTime);
+    ImGui::Text("Render Time: %.2f ms", m_RenderTime, GetWindowScaleDPI());
 
     // Show progress as a bar; width is automatic, height uses default.
     ImGui::ProgressBar(m_RenderProgress, ImVec2(-FLT_MIN, 0.0f));
