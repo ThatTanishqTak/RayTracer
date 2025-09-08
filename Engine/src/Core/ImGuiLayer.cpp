@@ -45,12 +45,27 @@ namespace Engine
         // Retrieve texture list from ImGui's platform interface.
         ImGuiPlatformIO& l_PlatformIO = ImGui::GetPlatformIO();
 
-        // Iterate over each texture and release associated GPU resources.
-        for (ImTextureData* it_Texture : l_PlatformIO.Textures)
+        // Iterate over each texture, release associated GPU resources, and
+        // remove it from the list to avoid double cleanup on subsequent
+        // shutdowns.
+        while (l_PlatformIO.Textures.Size > 0)
         {
-            if (it_Texture->Status != ImTextureStatus_Destroyed)
+            // Retrieve and remove the first texture entry. Removing the entry
+            // up front ensures the list is cleared even if early continues
+            // occur.
+            ImTextureData* l_Texture = l_PlatformIO.Textures[0];
+            l_PlatformIO.Textures.erase(l_PlatformIO.Textures.begin());
+
+            // Safety check: skip null entries before accessing Status to avoid
+            // potential null-pointer dereferences.
+            if (l_Texture == nullptr)
             {
-                Texture2D* l_BackendData = reinterpret_cast<Texture2D*>(it_Texture->BackendUserData);
+                continue;
+            }
+
+            if (l_Texture->Status != ImTextureStatus_Destroyed)
+            {
+                Texture2D* l_BackendData = reinterpret_cast<Texture2D*>(l_Texture->BackendUserData);
 
                 // Ensure texture is valid before unloading.
                 if (l_BackendData && IsTextureValid(*l_BackendData))
@@ -64,10 +79,13 @@ namespace Engine
                     MemFree(l_BackendData);
                 }
 
-                it_Texture->BackendUserData = nullptr;
-                it_Texture->Status = ImTextureStatus_Destroyed;
-                it_Texture->SetTexID(ImTextureID_Invalid);
+                l_Texture->BackendUserData = nullptr;
+                l_Texture->Status = ImTextureStatus_Destroyed;
+                l_Texture->SetTexID(ImTextureID_Invalid);
             }
         }
+
+        // Clear the texture list to avoid accidental reuse of freed textures.
+        l_PlatformIO.Textures.clear();
     }
 }
