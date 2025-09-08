@@ -20,7 +20,6 @@
 #include "Utilities/ResourceStats.h"
 
 #include <imgui.h>
-//#include <rlImGui.h>
 
 #include <cfloat>
 
@@ -29,24 +28,20 @@ SandboxLayer::SandboxLayer(Engine::Renderer* displayRenderer) : Engine::Layer("S
     // Constructor simply stores the renderer pointer.
 }
 
-void SandboxLayer::OnAttach()
-{
+void SandboxLayer::OnAttach() {
     // Currently nothing to initialize when the layer attaches.
 }
 
-void SandboxLayer::OnDetach()
-{
+void SandboxLayer::OnDetach() {
     // No special cleanup required for this layer.
 }
 
-void SandboxLayer::OnUpdate(float deltaTime)
-{
+void SandboxLayer::OnUpdate(float deltaTime) {
     // deltaTime is currently unused but kept for future timing logic.
     (void)deltaTime;
 
     // Launch a new render when requested and no render is in progress.
-    if (m_RequestRender && !m_Renderer.IsRendering())
-    {
+    if (m_RequestRender && !m_Renderer.IsRendering()) {
         m_RenderProgress = 0.0f; // Reset progress for upcoming render
         m_RenderTime = 0.0f;     // Clear timing from previous render
         m_Renderer.StartRender(m_Scene, m_DisplayRenderer->GetCamera());
@@ -57,39 +52,24 @@ void SandboxLayer::OnUpdate(float deltaTime)
     m_RenderProgress = m_Renderer.GetProgress();
 
     // When rendering is finished, sum each step's time to compute total.
-    if (!m_Renderer.IsRendering() && m_RenderProgress >= 1.0f)
-    {
+    if (!m_Renderer.IsRendering() && m_RenderProgress >= 1.0f) {
         std::vector<Engine::RenderStep> l_Steps = m_Renderer.GetRenderSteps();
         float l_TotalMs = 0.0f; // Accumulated elapsed time for all steps
-        for (const Engine::RenderStep& it_Step : l_Steps)
-        {
+        for (const Engine::RenderStep& it_Step : l_Steps) {
             l_TotalMs += it_Step.m_ElapsedMs;
         }
         m_RenderTime = l_TotalMs;
     }
 }
 
-void SandboxLayer::OnImGuiRender()
-{
+void SandboxLayer::OnImGuiRender() {
     ImGui::Begin("Render Stats", nullptr);
-
-    // Display the cumulative render time for the last completed frame.
-    ImGui::Text("Render Time: %.2f ms", m_RenderTime, GetWindowScaleDPI());
 
     // Show progress as a bar; width is automatic, height uses default.
     ImGui::ProgressBar(m_RenderProgress, ImVec2(-FLT_MIN, 0.0f));
 
-    // Determine tile counts based on current window size.
-    int l_TileSize = m_DisplayRenderer->GetTileSize(); // Future: expose tile sizing to the editor
-    int l_TilesX = (GetScreenWidth() + l_TileSize - 1) / l_TileSize;
-    int l_TilesY = (GetScreenHeight() + l_TileSize - 1) / l_TileSize;
-    int l_TotalTiles = l_TilesX * l_TilesY;
-    int l_Completed = static_cast<int>(m_RenderProgress * static_cast<float>(l_TotalTiles));
-    ImGui::Text("Tiles: %d/%d", l_Completed, l_TotalTiles);
-
     // Button to trigger a new render pass.
-    if (ImGui::Button("Render"))
-    {
+    if (ImGui::Button("Render")) {
         m_RequestRender = true;
     }
     ImGui::End();
@@ -110,33 +90,43 @@ void SandboxLayer::OnImGuiRender()
     // with a mutex so this snapshot is safe to iterate while threads may still
     // be producing data.
     std::vector<Engine::RenderStep> l_Steps = m_Renderer.GetRenderSteps();
+
+    // Compute tile information once for display outside the table.
+    int l_TileSize =
+        m_DisplayRenderer
+        ->GetTileSize(); // Future: expose tile sizing to the editor
+    int l_TilesX = (GetScreenWidth() + l_TileSize - 1) / l_TileSize;
+    int l_TilesY = (GetScreenHeight() + l_TileSize - 1) / l_TileSize;
+    int l_TotalTiles = l_TilesX * l_TilesY;
+    int l_Completed =
+        static_cast<int>(m_RenderProgress * static_cast<float>(l_TotalTiles));
+
     // Set a sensible default width and allow window to grow with content
     ImGui::SetNextWindowSize(ImVec2(320.0f, 0.0f), ImGuiCond_FirstUseEver);
     ImGui::Begin("Render Steps", nullptr);
-    if (ImGui::BeginTable("Steps", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-    {
-        // Stretch columns so they fill available space
+
+    // Display overall render time and tile completion once above the table.
+    ImGui::Text("Render Time: %.2f ms", m_RenderTime);
+    ImGui::Text("Tiles: %d/%d", l_Completed, l_TotalTiles);
+
+    // Two-column table showing each render stage and the CPU time spent.
+    if (ImGui::BeginTable("Steps", 2,
+        ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+        // Column 0: Name of the render stage
         ImGui::TableSetupColumn("Stage", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Time (ms)", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Render Time (ms)", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Tiles", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableHeadersRow();
-        ImGui::TableHeadersRow();
-        ImGui::TableHeadersRow();
+        // Column 1: Time spent on the CPU for the stage
+        ImGui::TableSetupColumn("CPU Time (ms)",
+            ImGuiTableColumnFlags_WidthStretch);
+        // Future: GPU/IO timing columns can be added here when available
         ImGui::TableHeadersRow();
 
-        for (const Engine::RenderStep& it_Step : l_Steps)
-        {
-            // Each row lists the name of the step and its elapsed time.
+        for (const Engine::RenderStep& it_Step : l_Steps) {
+            // Each row lists the name of the step and its elapsed CPU time.
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("%s", it_Step.m_Name.c_str());
             ImGui::TableNextColumn();
             ImGui::Text("%.2f", it_Step.m_ElapsedMs);
-            ImGui::TableNextColumn();
-            ImGui::Text("%.2f", m_RenderTime);
-            ImGui::TableNextColumn();
-            ImGui::Text("%d/%d", l_Completed, l_TotalTiles);
         }
 
         // TODO: Display GPU/IO steps once available.
@@ -145,17 +135,15 @@ void SandboxLayer::OnImGuiRender()
     ImGui::End();
 }
 
-void SandboxLayer::OnSceneRender()
-{
-    if (m_Renderer.IsRendering())
-    {
+void SandboxLayer::OnSceneRender() {
+    if (m_Renderer.IsRendering()) {
         // Render mode: display progressive framebuffer generated by the ray tracer.
         const Image& l_Image = m_Renderer.GetFrame();
-        m_DisplayRenderer->RenderImage(static_cast<const Color*>(l_Image.data), l_Image.width, l_Image.height);
+        m_DisplayRenderer->RenderImage(static_cast<const Color*>(l_Image.data),
+            l_Image.width, l_Image.height);
     }
 
-    else
-    {
+    else {
         // Editor mode: show real-time preview using the renderer's camera.
         m_DisplayRenderer->Begin3D(m_DisplayRenderer->GetCamera());
         // Preview drawing could be added here in the future.
@@ -164,7 +152,8 @@ void SandboxLayer::OnSceneRender()
 
     // Blit whichever image the display renderer currently holds to the screen.
     const Texture2D& l_Texture = m_DisplayRenderer->GetFrameTexture();
-    Rectangle l_Source{ 0.0f, 0.0f, static_cast<float>(l_Texture.width), static_cast<float>(-l_Texture.height) };
+    Rectangle l_Source{ 0.0f, 0.0f, static_cast<float>(l_Texture.width),
+                       static_cast<float>(-l_Texture.height) };
     DrawTextureRec(l_Texture, l_Source, Vector2{ 0.0f, 0.0f }, WHITE);
 
     // TODO: Support pause/resume and saving final image
