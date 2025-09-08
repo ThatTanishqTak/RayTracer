@@ -52,7 +52,7 @@ void SandboxLayer::OnUpdate(float deltaTime)
 
 void SandboxLayer::OnImGuiRender()
 {
-    ImGui::Begin("Render Stats", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Render Stats", nullptr);
 
     // Display the cumulative render time for the last completed frame.
     ImGui::Text("Render Time: %.2f ms", m_RenderTime);
@@ -76,7 +76,7 @@ void SandboxLayer::OnImGuiRender()
     ImGui::End();
 
     // Display CPU and memory statistics in a dedicated window.
-    ImGui::Begin("Resource Usage", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+    ImGui::Begin("Resource Usage", nullptr);
 
     size_t l_MemoryBytes = Engine::Utilities::ResourceStats::GetMemoryUsage();
     float l_MemoryMB = static_cast<float>(l_MemoryBytes) / (1024.0f * 1024.0f);

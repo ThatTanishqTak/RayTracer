@@ -10,7 +10,7 @@ namespace Engine
         RAY_CORE_INFO("Initializing window");
 
         // Configure the window and create it via raylib.
-        SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT);
+        SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE /*| FLAG_WINDOW_HIGHDPI | FLAG_MSAA_4X_HINT*/);
         InitWindow(width, height, title);
 
         // Disable default exit key and maximize for better user experience.
