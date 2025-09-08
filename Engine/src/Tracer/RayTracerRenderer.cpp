@@ -27,10 +27,11 @@ namespace Engine
         }
 
         std::chrono::high_resolution_clock::time_point l_SceneStart = std::chrono::high_resolution_clock::now();
-
+        
+        m_RenderStart = l_SceneStart; // Record absolute start of the render for duration queries.
+        m_RenderDurationMs = 0.0;     // Reset previous duration.
         m_CurrentScene = &scene;
         m_CurrentCamera = camera; // Store a copy for consistent access across threads.
-
         m_StopRequested = false;
         m_IsRendering = true;
 
@@ -96,6 +97,7 @@ namespace Engine
                 it_Worker.join();
             }
         }
+
         m_Workers.clear();
         m_IsRendering = false;
     }
@@ -185,6 +187,35 @@ namespace Engine
                 std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
                 m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs });
             }
+
+            // Compute the overall duration including scene setup for UI queries.
+            m_RenderDurationMs = std::chrono::duration<double, std::milli>(l_End - m_RenderStart).count();
+
+            // Rendering is complete; reset flag so the UI knows no work is active.
+            m_IsRendering = false;
+
+            // Join all worker threads to reclaim resources. The current thread
+            // cannot join itself, so join others first and detach this thread
+            // before clearing the container.
+            std::thread::id l_ThisThreadID = std::this_thread::get_id();
+            for (std::thread& it_Worker : m_Workers)
+            {
+                if (it_Worker.get_id() != l_ThisThreadID && it_Worker.joinable())
+                {
+                    it_Worker.join();
+                }
+            }
+            
+            for (std::thread& it_Worker : m_Workers)
+            {
+                if (it_Worker.get_id() == l_ThisThreadID && it_Worker.joinable())
+                {
+                    it_Worker.detach();
+                    break;
+                }
+            }
+
+            m_Workers.clear();
         }
 
         // TODO: Add GPU compute path when available

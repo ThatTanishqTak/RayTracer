@@ -71,6 +71,7 @@ namespace Engine
                 {
                     int l_Width = GetScreenWidth();
                     int l_Height = GetScreenHeight();
+
                     m_Renderer->ResizeFrameTexture(l_Width, l_Height); // Prevent image clipping
                     m_LastWindowPos = currentPos; // Update last position
                     // Future improvement: adjust camera aspect ratio on resize.

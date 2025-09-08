@@ -98,7 +98,9 @@ namespace Engine
 
         std::vector<RenderStep> m_Steps;                 ///< Chronological steps recorded during rendering.
         mutable std::mutex m_StepsMutex;                 ///< Protects access to m_Steps for thread safety.
+        std::chrono::high_resolution_clock::time_point m_RenderStart{}; ///< Absolute start time of the render.
         std::chrono::high_resolution_clock::time_point m_TileProcessingStart{}; ///< Start time for tile processing.
+        double m_RenderDurationMs{ 0.0 };                ///< Total duration of the last render in milliseconds.
         std::atomic<int> m_WorkersFinished{ 0 };         ///< Number of workers that finished tracing.
     };
 }

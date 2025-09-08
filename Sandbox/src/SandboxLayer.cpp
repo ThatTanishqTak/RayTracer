@@ -41,12 +41,31 @@ void SandboxLayer::OnDetach()
 
 void SandboxLayer::OnUpdate(float deltaTime)
 {
-    // Camera updates are handled by the renderer; begin a new render if
-    // requested.
+    // deltaTime is currently unused but kept for future timing logic.
+    (void)deltaTime;
+
+    // Launch a new render when requested and no render is in progress.
     if (m_RequestRender && !m_Renderer.IsRendering())
     {
+        m_RenderProgress = 0.0f; // Reset progress for upcoming render
+        m_RenderTime = 0.0f;     // Clear timing from previous render
         m_Renderer.StartRender(m_Scene, m_DisplayRenderer->GetCamera());
         m_RequestRender = false;
+    }
+
+    // Query current progress from the renderer every frame.
+    m_RenderProgress = m_Renderer.GetProgress();
+
+    // When rendering is finished, sum each step's time to compute total.
+    if (!m_Renderer.IsRendering() && m_RenderProgress >= 1.0f)
+    {
+        std::vector<Engine::RenderStep> l_Steps = m_Renderer.GetRenderSteps();
+        float l_TotalMs = 0.0f; // Accumulated elapsed time for all steps
+        for (const Engine::RenderStep& it_Step : l_Steps)
+        {
+            l_TotalMs += it_Step.m_ElapsedMs;
+        }
+        m_RenderTime = l_TotalMs;
     }
 }
 
@@ -93,12 +112,16 @@ void SandboxLayer::OnImGuiRender()
     std::vector<Engine::RenderStep> l_Steps = m_Renderer.GetRenderSteps();
     // Set a sensible default width and allow window to grow with content
     ImGui::SetNextWindowSize(ImVec2(320.0f, 0.0f), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Render Steps", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-    if (ImGui::BeginTable("Steps", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    ImGui::Begin("Render Steps", nullptr);
+    if (ImGui::BeginTable("Steps", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
         // Stretch columns so they fill available space
         ImGui::TableSetupColumn("Stage", ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableSetupColumn("Time (ms)", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Render Time (ms)", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Tiles", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableHeadersRow();
+        ImGui::TableHeadersRow();
         ImGui::TableHeadersRow();
         ImGui::TableHeadersRow();
 
@@ -110,6 +133,10 @@ void SandboxLayer::OnImGuiRender()
             ImGui::Text("%s", it_Step.m_Name.c_str());
             ImGui::TableNextColumn();
             ImGui::Text("%.2f", it_Step.m_ElapsedMs);
+            ImGui::TableNextColumn();
+            ImGui::Text("%.2f", m_RenderTime);
+            ImGui::TableNextColumn();
+            ImGui::Text("%d/%d", l_Completed, l_TotalTiles);
         }
 
         // TODO: Display GPU/IO steps once available.
