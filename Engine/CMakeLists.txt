@@ -28,6 +28,8 @@ target_include_directories(rlimgui PUBLIC
 )
 target_link_libraries(rlimgui PUBLIC imgui raylib)
 
+# ---- stb -------
+
 # ---- Engine sources ----
 file(GLOB_RECURSE ENGINE_SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h

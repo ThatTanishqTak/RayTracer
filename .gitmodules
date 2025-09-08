@@ -8,3 +8,6 @@
 	path = Engine/vendor/imgui
 	url = https://github.com/ThatTanishqTak/imgui.git
 	branch = docking
+[submodule "Engine/vendor/stb"]
+	path = Engine/vendor/stb
+	url = https://github.com/ThatTanishqTak/stb.git
