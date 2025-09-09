@@ -29,7 +29,8 @@ namespace Engine
             // TODO: Introduce a retry mechanism to attempt window creation again.
         }
 
-        // Construct the renderer and set it up for rendering.
+        // Construct the renderer used for both real-time drawing and CPU ray tracing.
+        // With RayTracerRenderer removed, Renderer handles all rendering paths directly.
         m_Renderer = std::make_shared<Renderer>();
         // Initialize the renderer using the current window dimensions to avoid clipped output.
         const bool l_RendererInitialized = m_Renderer->Initialize(specifications.Width, specifications.Height);
