@@ -22,6 +22,10 @@ Engine::Application* Engine::CreateApplication()
     l_Specifications.Height = 1080;
     l_Specifications.Title = "Sandbox";
 
+    RAY_TRACE("Width: {}", l_Specifications.Width);
+    RAY_TRACE("Height: {}", l_Specifications.Height);
+    RAY_TRACE("Title: {}", l_Specifications.Title);
+
     RAY_INFO("-------APPLICATION CREATED-------");
 
     return new Sandbox(l_Specifications);

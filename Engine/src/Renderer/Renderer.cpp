@@ -11,7 +11,7 @@ namespace Engine
 {
     bool Renderer::Initialize(int width, int height)
     {
-        RAY_CORE_INFO("Initializing the renderer");
+        RAY_CORE_TRACE("Initializing the renderer");
 
         bool l_Result = true; // Track overall initialization success
 
@@ -35,14 +35,14 @@ namespace Engine
 
         // Future improvement: provide detailed error codes instead of a simple boolean.
 
-        RAY_CORE_INFO("Renderer initialized");
+        RAY_CORE_TRACE("Renderer initialized");
 
         return l_Result;
     }
 
     void Renderer::Shutdown()
     {
-        RAY_CORE_INFO("Shuting down renderer");
+        RAY_CORE_TRACE("Shuting down renderer");
 
         // Release frame texture if it exists.
         if (m_RenderTexture.id != 0)
@@ -53,7 +53,7 @@ namespace Engine
         // Tear down ImGui integration.
         //rlImGuiShutdown();
 
-        RAY_CORE_INFO("Renderer shutdown complete");
+        RAY_CORE_TRACE("Renderer shutdown complete");
     }
 
     void Renderer::BeginFrame()
