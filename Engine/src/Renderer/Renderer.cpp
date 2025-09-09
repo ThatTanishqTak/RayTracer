@@ -429,7 +429,9 @@ namespace Engine
                             Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
 
                     Ray l_Ray(m_CurrentCamera.position, l_PixelDir);
-                    Vector3 l_ColorVec = RayColor(l_Ray, m_CurrentScene->GetBVH(), 1);
+                    // Trace the ray using the configured maximum depth to limit recursion.
+                    // Future improvement: expose m_MaxDepth for runtime tuning.
+                    Vector3 l_ColorVec = RayColor(l_Ray, m_CurrentScene->GetBVH(), m_MaxDepth);
 
                     Color l_Color
                     {

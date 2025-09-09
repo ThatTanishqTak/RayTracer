@@ -118,6 +118,8 @@ namespace Engine
         std::chrono::high_resolution_clock::time_point m_TileProcessingStart{}; ///<Start time for tile processing.
         double m_RenderDurationMs{ 0.0 };                ///Total duration of the last render in milliseconds.
         std::atomic<int> m_WorkersFinished{ 0 };         ///Number of workers that finished tracing.
+        int m_MaxDepth{ 50 };                           ///Maximum recursion depth for ray tracing.
+        ///TODO: expose via user configuration.
         
         /**\brief Entry point for worker threads processing tiles.*/
         void WorkerThread(int threadID);
