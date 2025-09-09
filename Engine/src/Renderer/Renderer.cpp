@@ -240,4 +240,17 @@ namespace Engine
         // Future improvement: expose runtime configuration or adaptive sizing.
         return m_TileSize;
     }
+
+    void Renderer::SetRenderMode(RenderMode a_Mode)
+    {
+        // Switch between rasterization and ray tracing pipelines.
+        m_RenderMode = a_Mode;
+        // Future improvement: reconfigure shaders or dispatch GPU compute tasks for hybrid rendering.
+    }
+
+    Renderer::RenderMode Renderer::GetRenderMode() const
+    {
+        // Report current rendering technique.
+        return m_RenderMode;
+    }
 }

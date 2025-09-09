@@ -13,6 +13,21 @@ namespace Engine
     class Renderer
     {
     public:
+        /**\brief Rendering techniques supported by the engine.
+         * Raster: traditional rasterization using the GPU graphics pipeline.
+         * RayTrace: CPU based path for ray-traced rendering.
+         * Future improvement: expand with GPU compute or hybrid modes to leverage modern hardware.
+         */
+        enum class RenderMode
+        {
+            Raster,   ///Conventional raster pipeline for real-time drawing.
+            RayTrace  ///CPU ray tracing path; enables high-quality effects.
+        };
+
+        /**\brief Select the active rendering technique.*/
+        void SetRenderMode(RenderMode a_Mode);
+        /**\brief Retrieve the currently active rendering mode.*/
+        RenderMode GetRenderMode() const;
         /**\brief Initialize renderer state and prepare for drawing using the window dimensions.*/
         bool Initialize(int width, int height);
         /**\brief Release resources allocated by the renderer.*/
@@ -47,6 +62,7 @@ namespace Engine
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
         RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
+        RenderMode m_RenderMode = RenderMode::Raster; ///Current rendering approach; future: GPU compute/hybrid pipelines.
         int m_FrameWidth = 0; ///Cached width of the frame texture.
         int m_FrameHeight = 0; ///Cached height of the frame texture.
         std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.
