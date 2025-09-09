@@ -13,6 +13,14 @@
 #include <format>
 #include <chrono>
 #include <cmath>
+#include <random>
+
+namespace
+{
+    // Thread-local RNG avoids contention when jittering sample rays per worker.
+    thread_local std::mt19937 s_Generator(std::random_device{}());
+    thread_local std::uniform_real_distribution<float> s_Distribution(0.0f, 1.0f);
+}
 
 namespace Engine
 {
@@ -58,7 +66,7 @@ namespace Engine
         }
 
         // Tear down ImGui integration.
-        //rlImGuiShutdown();
+        rlImGuiShutdown();
 
         RAY_CORE_TRACE("Renderer shutdown complete");
     }
@@ -386,6 +394,7 @@ namespace Engine
         (void)threadID; // Thread ID currently unused; reserved for future enhancements.
         int l_Width = m_Framebuffer.width;
         int l_Height = m_Framebuffer.height;
+        std::mt19937& l_Generator = s_Generator; // Reuse thread-local RNG for jitter
 
         // Precompute camera basis vectors and projection parameters once per thread.
         // These form an orthonormal basis from the camera orientation and scale the
@@ -418,20 +427,33 @@ namespace Engine
             {
                 for (int it_X = l_TileX; it_X < l_MaxX; ++it_X)
                 {
-                    // Convert pixel coordinates to Normalized Device Coordinates in [-1, 1].
-                    float l_NdcX = ((static_cast<float>(it_X) + 0.5f) / static_cast<float>(l_Width)) * 2.0f - 1.0f;
-                    float l_NdcY = 1.0f - ((static_cast<float>(it_Y) + 0.5f) / static_cast<float>(l_Height)) * 2.0f;
+                    // Accumulate multiple jittered samples per pixel to reduce aliasing.
+                    // This increases render time linearly with the sample count.
+                    // Future improvement: incorporate stratified sampling for better convergence.
+                    Vector3 l_ColorAccum{ 0.0f, 0.0f, 0.0f };
+                    for (int it_Sample = 0; it_Sample < m_SamplesPerPixel; ++it_Sample)
+                    {
+                        float l_OffsetX = s_Distribution(l_Generator);
+                        float l_OffsetY = s_Distribution(l_Generator);
 
-                    // Ray direction through the pixel on the virtual image plane.
-                    Vector3 l_PixelDir = Vector3Normalize(
-                        Vector3Add(
-                            Vector3Add(l_Forward, Vector3Scale(l_Right, l_NdcX * l_TanFovX)),
-                            Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
+                        // Convert pixel coordinates plus jitter to NDC in [-1,1].
+                        float l_NdcX = ((static_cast<float>(it_X) + l_OffsetX) / static_cast<float>(l_Width)) * 2.0f - 1.0f;
+                        float l_NdcY = 1.0f - ((static_cast<float>(it_Y) + l_OffsetY) / static_cast<float>(l_Height)) * 2.0f;
 
-                    Ray l_Ray(m_CurrentCamera.position, l_PixelDir);
-                    // Trace the ray using the configured maximum depth to limit recursion.
-                    // Future improvement: expose m_MaxDepth for runtime tuning.
-                    Vector3 l_ColorVec = RayColor(l_Ray, m_CurrentScene->GetBVH(), m_MaxDepth);
+                        // Ray direction through the pixel on the virtual image plane.
+                        Vector3 l_PixelDir = Vector3Normalize(
+                            Vector3Add(
+                                Vector3Add(l_Forward, Vector3Scale(l_Right, l_NdcX * l_TanFovX)),
+                                Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
+
+                        Ray l_Ray(m_CurrentCamera.position, l_PixelDir);
+                        // Trace the ray using the configured maximum depth to limit recursion.
+                        // Future improvement: expose m_MaxDepth for runtime tuning.
+                        Vector3 l_SampleColor = RayColor(l_Ray, m_CurrentScene->GetBVH(), m_MaxDepth);
+                        l_ColorAccum = Vector3Add(l_ColorAccum, l_SampleColor);
+                    }
+
+                    Vector3 l_ColorVec = Vector3Scale(l_ColorAccum, 1.0f / static_cast<float>(m_SamplesPerPixel));
 
                     // Apply gamma correction (gamma = 2.0) to approximate how monitors display
                     // brightness. This converts the linear color returned by the ray tracer to

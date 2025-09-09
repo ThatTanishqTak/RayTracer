@@ -120,6 +120,9 @@ namespace Engine
         std::atomic<int> m_WorkersFinished{ 0 };         ///Number of workers that finished tracing.
         int m_MaxDepth{ 50 };                           ///Maximum recursion depth for ray tracing.
         ///TODO: expose via user configuration.
+
+        int m_SamplesPerPixel{ 4 };                     ///Jittered rays per pixel for anti-aliasing.
+        ///Higher values improve quality but slow rendering. Future improvement: stratified sampling.
         
         /**\brief Entry point for worker threads processing tiles.*/
         void WorkerThread(int threadID);
