@@ -433,12 +433,25 @@ namespace Engine
                     // Future improvement: expose m_MaxDepth for runtime tuning.
                     Vector3 l_ColorVec = RayColor(l_Ray, m_CurrentScene->GetBVH(), m_MaxDepth);
 
+                    // Apply gamma correction (gamma = 2.0) to approximate how monitors display
+                    // brightness. This converts the linear color returned by the ray tracer to
+                    // a non-linear representation that better matches human perception.
+                    // Future improvement: make the gamma value configurable for different output
+                    // devices or to disable correction entirely.
+                    Vector3 l_CorrectedColor
+                    {
+                        sqrtf(l_ColorVec.x),
+                        sqrtf(l_ColorVec.y),
+                        sqrtf(l_ColorVec.z)
+                    };
+
+                    // Clamp the gamma-corrected color and convert to 8-bit per channel.
                     Color l_Color
                     {
-                        static_cast<unsigned char>(Clamp(l_ColorVec.x, 0.0f, 1.0f) * 255.0f),   // R
-                        static_cast<unsigned char>(Clamp(l_ColorVec.y, 0.0f, 1.0f) * 255.0f),   // G
-                        static_cast<unsigned char>(Clamp(l_ColorVec.z, 0.0f, 1.0f) * 255.0f),   // B
-                        255                                                                     // A
+                        static_cast<unsigned char>(Clamp(l_CorrectedColor.x, 0.0f, 1.0f) * 255.0f),   // R
+                        static_cast<unsigned char>(Clamp(l_CorrectedColor.y, 0.0f, 1.0f) * 255.0f),   // G
+                        static_cast<unsigned char>(Clamp(l_CorrectedColor.z, 0.0f, 1.0f) * 255.0f),   // B
+                        255                                                                           // A
                     };
 
                     size_t l_Index = static_cast<size_t>(it_Y) * static_cast<size_t>(l_Width) + static_cast<size_t>(it_X);
