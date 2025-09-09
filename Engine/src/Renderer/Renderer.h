@@ -3,13 +3,27 @@
 #include "Renderer/CameraController.h"
 
 #include <raylib.h>
+
 #include <vector>
+#include <thread>
+#include <atomic>
+#include <string>
+#include <chrono>
+#include <mutex>
 
 namespace Engine
 {
+    class Scene; ///Forward declaration of the scene container used during ray tracing.
+
     /**
      *\brief Handles all drawing operations and provides a simple frame buffer interface.
      */
+    struct RenderStep
+    {
+        std::string m_Name;       ///< Human readable name of the step.
+        double m_ElapsedMs{ 0.0 };///< Time spent in this step in milliseconds.
+    };
+
     class Renderer
     {
     public:
@@ -62,11 +76,33 @@ namespace Engine
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
         RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
-        RenderMode m_RenderMode = RenderMode::Raster; ///Current rendering approach; future: GPU compute/hybrid pipelines.
+        RenderMode m_RenderMode = RenderMode::Raster; ///Current rendering approach; TODO: add GPU compute path.
         int m_FrameWidth = 0; ///Cached width of the frame texture.
         int m_FrameHeight = 0; ///Cached height of the frame texture.
         std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.
         std::vector<Color> m_SubBuffer = { }; ///Reusable buffer for sub-region uploads to avoid frequent allocations.
-        int m_TileSize = 16; ///Side length of each tile; future: make configurable.
+        int m_TileSize = 16; ///Side length of each tile; TODO: explore adaptive tiling.
+
+        // --- Ray tracing state -------------------------------------------------
+        std::vector<std::thread> m_Workers;              ///Background workers performing the trace. TODO: replace with GPU dispatch when available.
+        std::atomic<bool> m_IsRendering{ false };        ///True while workers are active.
+        std::atomic<bool> m_StopRequested{ false };      ///Signals workers to exit their loop.
+        Image m_Framebuffer{};                           ///CPU side color buffer used for ray tracing output.
+
+        const Scene* m_CurrentScene{ nullptr };          ///Scene being rendered.
+        Camera m_CurrentCamera{};                        ///Copy of camera for consistent rays.
+
+        std::atomic<int> m_NextTile{ 0 };                ///Index of the next tile to process.
+        int m_TilesX{ 0 };                               ///Number of tiles horizontally.
+        int m_TilesY{ 0 };                               ///Number of tiles vertically.
+        int m_TotalTiles{ 0 };                           ///Total amount of tiles in the frame.
+        std::atomic<int> m_TilesCompleted{ 0 };          ///Tiles completed by worker threads.
+
+        std::vector<RenderStep> m_Steps;                 ///Chronological steps recorded during rendering.
+        mutable std::mutex m_StepsMutex;                 ///Protects access to m_Steps for thread safety.
+        std::chrono::high_resolution_clock::time_point m_RenderStart{}; ///<Absolute start time of the render.
+        std::chrono::high_resolution_clock::time_point m_TileProcessingStart{}; ///<Start time for tile processing.
+        double m_RenderDurationMs{ 0.0 };                ///Total duration of the last render in milliseconds.
+        std::atomic<int> m_WorkersFinished{ 0 };         ///Number of workers that finished tracing.
     };
 }
