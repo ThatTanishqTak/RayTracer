@@ -2,7 +2,7 @@ project(Engine LANGUAGES CXX)
 
 # Option to enable GPU accelerated ray tracing. Disabled by default to keep
 # builds portable on systems without compatible hardware or SDKs.
-option(ENGINE_ENABLE_GPU "Enable GPU ray tracing support" ON)
+option(ENGINE_ENABLE_GPU "Enable GPU ray tracing support" OFF)
 
 # Raylib
 add_subdirectory(vendor/raylib) # provides target: raylib

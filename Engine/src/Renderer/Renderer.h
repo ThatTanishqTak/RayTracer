@@ -128,5 +128,14 @@ namespace Engine
         
         /**\brief Entry point for worker threads processing tiles.*/
         void WorkerThread(int threadID);
+
+#ifdef ENGINE_ENABLE_GPU
+        /**\brief Upload per-frame parameters and dispatch the GPU compute shader.
+         * Future improvement: move parameter packing into a dedicated constant buffer structure.
+         */
+        void DispatchGPU(const Scene& scene, const Camera& camera);
+
+        Shader m_GpuPipeline{ 0 }; ///< Compute shader pipeline used during RenderMode::RayTraceGPU.
+#endif
     };
 }

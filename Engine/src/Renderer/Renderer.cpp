@@ -65,6 +65,15 @@ namespace Engine
             UnloadRenderTexture(m_RenderTexture);
         }
 
+#ifdef ENGINE_ENABLE_GPU
+        // Release GPU compute resources when previously allocated.
+        if (m_GpuPipeline.id != 0)
+        {
+            UnloadShader(m_GpuPipeline);
+            m_GpuPipeline = { 0 };
+        }
+#endif
+
         RAY_CORE_TRACE("Renderer shutdown complete");
     }
 
@@ -320,7 +329,33 @@ namespace Engine
             m_Framebuffer = GenImageColor(l_Width, l_Height, BLACK);
         }
 
-        // Prepare tile bookkeeping.
+        // Handle GPU dispatch separately to bypass worker threads and atomics.
+        if (m_RenderMode == RenderMode::RayTraceGPU)
+        {
+#ifdef ENGINE_ENABLE_GPU
+            std::chrono::high_resolution_clock::time_point l_SceneEnd = std::chrono::high_resolution_clock::now();
+            double l_SceneMs = std::chrono::duration<double, std::milli>(l_SceneEnd - l_SceneStart).count();
+            {
+                std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+                m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs });
+            }
+
+            std::chrono::high_resolution_clock::time_point l_DispatchStart = l_SceneEnd;
+            DispatchGPU(scene, camera);
+            std::chrono::high_resolution_clock::time_point l_DispatchEnd = std::chrono::high_resolution_clock::now();
+            double l_DispatchMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - l_DispatchStart).count();
+            {
+                std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+                m_Steps.push_back(RenderStep{ "GPU Dispatch", l_DispatchMs });
+            }
+            m_RenderDurationMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - m_RenderStart).count();
+#endif
+            m_IsRendering = false;
+
+            return;
+        }
+
+        // Prepare tile bookkeeping for CPU path.
         m_TilesX = (l_Width + m_TileSize - 1) / m_TileSize;
         m_TilesY = (l_Height + m_TileSize - 1) / m_TileSize;
         m_TotalTiles = m_TilesX * m_TilesY;
@@ -361,7 +396,15 @@ namespace Engine
             return;
         }
 
-        // Signal threads to stop and wait for them to exit.
+        if (m_RenderMode == RenderMode::RayTraceGPU)
+        {
+#ifdef ENGINE_ENABLE_GPU
+            // Future improvement: cancel GPU work if API supports it.
+#endif
+            m_IsRendering = false;
+
+            return;
+        }
         m_StopRequested = true;
         for (std::jthread& it_Worker : m_Workers)
         {
@@ -387,6 +430,12 @@ namespace Engine
 
     float Renderer::GetProgress() const
     {
+        if (m_RenderMode == RenderMode::RayTraceGPU)
+        {
+            // GPU dispatch is treated as a single step.
+            return m_IsRendering ? 0.0f : 1.0f;
+        }
+
         // Avoid division by zero in cases where no render has been scheduled yet.
         if (m_TotalTiles == 0)
         {
@@ -403,6 +452,27 @@ namespace Engine
 
         return m_Steps;
     }
+
+#ifdef ENGINE_ENABLE_GPU
+    void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
+    {
+        (void)scene; // Scene data will be uploaded once GPU backend is finalized.
+
+        if (m_GpuPipeline.id == 0)
+        {
+            // Future improvement: lazily create the compute pipeline here.
+            return;
+        }
+
+        // Upload basic per-frame parameters as uniform values.
+        Vector3 l_CameraPos = camera.position;
+        int l_Location = GetShaderLocation(m_GpuPipeline, "uCameraPos");
+        SetShaderValue(m_GpuPipeline, l_Location, &l_CameraPos, SHADER_UNIFORM_VEC3);
+
+        // Placeholder for compute dispatch; API specifics depend on the GPU backend.
+        // rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
+    }
+#endif
 
     void Renderer::WorkerThread(int threadID)
     {
