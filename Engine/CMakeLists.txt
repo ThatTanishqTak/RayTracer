@@ -1,5 +1,9 @@
 project(Engine LANGUAGES CXX)
 
+# Option to enable GPU accelerated ray tracing. Disabled by default to keep
+# builds portable on systems without compatible hardware or SDKs.
+option(ENGINE_ENABLE_GPU "Enable GPU ray tracing support" ON)
+
 # Raylib
 add_subdirectory(vendor/raylib) # provides target: raylib
 
@@ -37,6 +41,10 @@ file(GLOB_RECURSE ENGINE_SOURCE
 )
 
 add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCE})
+
+if(ENGINE_ENABLE_GPU)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC ENGINE_ENABLE_GPU)
+endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>

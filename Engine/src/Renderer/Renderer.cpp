@@ -255,14 +255,32 @@ namespace Engine
 
     void Renderer::SetRenderMode(RenderMode mode)
     {
-        // Switch between rasterization and ray tracing pipelines.
-        m_RenderMode = mode;
-        // Future improvement: reconfigure shaders or dispatch GPU compute tasks for hybrid rendering.
+        // Switch between available rendering pipelines.
+        switch (mode)
+        {
+        case RenderMode::Raster:
+        case RenderMode::RayTrace:
+            m_RenderMode = mode;
+            break;
+        case RenderMode::RayTraceGPU:
+#ifdef ENGINE_ENABLE_GPU
+            m_RenderMode = mode;
+#else
+            // Fallback to CPU tracing if GPU support is not compiled in.
+            m_RenderMode = RenderMode::RayTrace;
+#endif
+            break;
+        default:
+            m_RenderMode = RenderMode::Raster;
+            break;
+        }
+
+        // GPU mode is ideal for complex scenes or high sample counts when hardware acceleration is available.
     }
 
     Renderer::RenderMode Renderer::GetRenderMode() const
     {
-        // Report current rendering technique.
+        // Report current rendering technique. GPU mode requires ENGINE_ENABLE_GPU at build time.
         return m_RenderMode;
     }
 

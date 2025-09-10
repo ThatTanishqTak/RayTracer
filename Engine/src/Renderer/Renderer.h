@@ -30,16 +30,18 @@ namespace Engine
         /**\brief Rendering techniques supported by the engine.
          * Raster: traditional rasterization using the GPU graphics pipeline.
          * RayTrace: CPU based path for ray-traced rendering.
-         * Future improvement: expand with GPU compute or hybrid modes to leverage modern hardware.
+         * RayTraceGPU: GPU-accelerated tracing; requires ENGINE_ENABLE_GPU.
+         * Future improvement: expand with hybrid modes to leverage modern hardwar
          */
         enum class RenderMode
         {
-            Raster,   ///Conventional raster pipeline for real-time drawing.
-            RayTrace  ///CPU ray tracing path; enables high-quality effects.
+            Raster,        ///Conventional raster pipeline for real-time drawing.
+            RayTrace,      ///CPU ray tracing path; enables high-quality effects.
+            RayTraceGPU    ///GPU compute path; preferred for complex scenes when available.
         };
 
         /**\brief Select the active rendering technique.*/
-        void SetRenderMode(RenderMode a_Mode);
+        void SetRenderMode(RenderMode mode);
         /**\brief Retrieve the currently active rendering mode.*/
         RenderMode GetRenderMode() const;
         /**\brief Initialize renderer state and prepare for drawing using the window dimensions.*/
@@ -90,7 +92,7 @@ namespace Engine
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
         RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
-        RenderMode m_RenderMode = RenderMode::RayTrace; ///Current rendering approach; TODO: add GPU compute path.
+        RenderMode m_RenderMode = RenderMode::RayTraceGPU; ///Current rendering approach; includes GPU path when ENGINE_ENABLE_GPU.
         int m_FrameWidth = 0; ///Cached width of the frame texture.
         int m_FrameHeight = 0; ///Cached height of the frame texture.
         std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.
