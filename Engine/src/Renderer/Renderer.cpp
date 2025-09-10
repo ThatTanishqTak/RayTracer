@@ -18,6 +18,7 @@
 #include <cmath>
 #include <random>
 #include <string>
+#include <filesystem>
 
 namespace
 {
@@ -63,23 +64,45 @@ namespace Engine
         // Load the compute shader used for GPU ray tracing.
         if (l_Result)
         {
-            const char* l_ShaderPath = "Assets/Shaders/RayTrace.hlsl";
-            m_GpuPipeline = LoadShader(nullptr, l_ShaderPath);
+            // Resolve the shader location starting from the Sandbox assets directory.
+            // The search walks up the directory tree so the engine can locate assets
+            // regardless of the working directory. Future improvement: centralize
+            // this logic in a dedicated resource manager.
+            std::filesystem::path l_ShaderPath = std::filesystem::path("Sandbox") / "Assets/Shaders/RayTrace.hlsl";
+            if (!std::filesystem::exists(l_ShaderPath))
+            {
+                std::filesystem::path l_SearchDirectory = std::filesystem::current_path();
+                while (!l_SearchDirectory.empty())
+                {
+                    std::filesystem::path l_Candidate = l_SearchDirectory / l_ShaderPath;
+                    if (std::filesystem::exists(l_Candidate))
+                    {
+                        l_ShaderPath = l_Candidate;
+
+                        break;
+                    }
+
+                    l_SearchDirectory = l_SearchDirectory.parent_path();
+                }
+            }
+
+            std::string l_ShaderPathStr = l_ShaderPath.string();
+            m_GpuPipeline = LoadShader(nullptr, l_ShaderPathStr.c_str());
             if (m_GpuPipeline.id == 0)
             {
-                std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPath);
+                std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPathStr);
                 RAY_CORE_ERROR(l_Message);
 
                 l_Result = false;
             }
-        }
 #endif
 
-        // Future improvement: provide detailed error codes instead of a simple boolean.
+            // Future improvement: provide detailed error codes instead of a simple boolean.
 
-        RAY_CORE_TRACE("Renderer initialized");
+            RAY_CORE_TRACE("Renderer initialized");
 
-        return l_Result;
+            return l_Result;
+        }
     }
 
     void Renderer::Shutdown()
