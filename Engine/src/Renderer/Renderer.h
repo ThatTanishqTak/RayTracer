@@ -92,7 +92,7 @@ namespace Engine
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
         RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
-        RenderMode m_RenderMode = RenderMode::RayTraceGPU; ///Current rendering approach; includes GPU path when ENGINE_ENABLE_GPU.
+        RenderMode m_RenderMode = RenderMode::RayTrace; ///Current rendering approach; defaults to CPU tracing for compatibility.
         int m_FrameWidth = 0; ///Cached width of the frame texture.
         int m_FrameHeight = 0; ///Cached height of the frame texture.
         std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.
@@ -113,6 +113,7 @@ namespace Engine
         int m_TilesY{ 0 };                               ///Number of tiles vertically.
         int m_TotalTiles{ 0 };                           ///Total amount of tiles in the frame.
         std::atomic<int> m_TilesCompleted{ 0 };          ///Tiles completed by worker threads.
+        bool m_GpuDispatched{ false };                   ///Tracks whether a GPU dispatch occurred to distinguish unstarted renders.
 
         std::vector<RenderStep> m_Steps;                 ///Chronological steps recorded during rendering.
         mutable std::mutex m_StepsMutex;                 ///Protects access to m_Steps for thread safety.

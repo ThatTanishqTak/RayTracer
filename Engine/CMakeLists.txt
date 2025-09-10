@@ -84,9 +84,9 @@ if(MSVC AND ENGINE_ENABLE_GPU)
     endif()
 endif()
 
-#if(ENGINE_ENABLE_GPU)
+if(ENGINE_ENABLE_GPU)
     target_compile_definitions(${PROJECT_NAME} PUBLIC ENGINE_ENABLE_GPU)
-#endif()
+endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>

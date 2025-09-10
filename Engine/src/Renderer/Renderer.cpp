@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cmath>
 #include <random>
+#include <string>
 
 namespace
 {
@@ -32,6 +33,13 @@ namespace Engine
         RAY_CORE_TRACE("Initializing the renderer");
 
         bool l_Result = true; // Track overall initialization success
+
+#ifndef ENGINE_ENABLE_GPU
+        // Ensure CPU path is active when the engine is built without GPU support.
+        SetRenderMode(RenderMode::RayTrace);
+        std::string l_Warning = "ENGINE_ENABLE_GPU not defined; defaulting to CPU ray tracing";
+        RAY_CORE_WARN(l_Warning);
+#endif
 
         // Initialize ImGui for raylib and store the result.
         rlImGuiSetup(true);
@@ -55,7 +63,7 @@ namespace Engine
         // Load the compute shader used for GPU ray tracing.
         if (l_Result)
         {
-            const char* l_ShaderPath = "Assets/Shaders/RayTrace.compute.hlsl";
+            const char* l_ShaderPath = "Assets/Shaders/RayTrace.hlsl";
             m_GpuPipeline = LoadShader(nullptr, l_ShaderPath);
             if (m_GpuPipeline.id == 0)
             {
@@ -347,6 +355,7 @@ namespace Engine
         m_CurrentCamera = camera; // Store a copy for consistent access across threads.
         m_StopRequested = false;
         m_IsRendering = true;
+        m_GpuDispatched = false; // Reset GPU dispatch flag for this render pass
 
         // Allocate or resize the frame buffer to match the current window size.
         int l_Width = GetScreenWidth();
@@ -373,6 +382,7 @@ namespace Engine
 
             std::chrono::high_resolution_clock::time_point l_DispatchStart = l_SceneEnd;
             DispatchGPU(scene, camera);
+            m_GpuDispatched = true; // Mark that the GPU path executed
             std::chrono::high_resolution_clock::time_point l_DispatchEnd = std::chrono::high_resolution_clock::now();
             double l_DispatchMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - l_DispatchStart).count();
             {
@@ -464,6 +474,12 @@ namespace Engine
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
             // GPU dispatch is treated as a single step.
+            if (!m_IsRendering && !m_GpuDispatched)
+            {
+                // No dispatch occurred; report zero progress for clarity.
+                return 0.0f;
+            }
+
             return m_IsRendering ? 0.0f : 1.0f;
         }
 
@@ -508,6 +524,7 @@ namespace Engine
                 }
                 m_NodeBuffer = rlLoadShaderBuffer(l_Required, l_Nodes.data(), RL_STATIC_DRAW);
             }
+
             else
             {
                 rlUpdateShaderBuffer(m_NodeBuffer, l_Nodes.data(), l_Required, 0);
@@ -526,6 +543,7 @@ namespace Engine
                 }
                 m_PrimitiveBuffer = rlLoadShaderBuffer(l_Required, l_Primitives.data(), RL_STATIC_DRAW);
             }
+
             else
             {
                 rlUpdateShaderBuffer(m_PrimitiveBuffer, l_Primitives.data(), l_Required, 0);
@@ -543,6 +561,7 @@ namespace Engine
             int m_MaxDepth;
             int m_SamplesPerPixel;
         };
+
         TraceParams l_Params{ m_MaxDepth, m_SamplesPerPixel };
         int l_ParamsLoc = GetShaderLocation(m_GpuPipeline, "uParams");
         SetShaderValue(m_GpuPipeline, l_ParamsLoc, &l_Params, SHADER_UNIFORM_IVEC2);

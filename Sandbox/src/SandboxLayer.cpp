@@ -36,6 +36,10 @@ SandboxLayer::SandboxLayer(Engine::Renderer* displayRenderer) : Engine::Layer("S
 
 void SandboxLayer::OnAttach()
 {
+    // Ensure the renderer operates in CPU mode. Future improvement: expose GPU
+    // acceleration when available.
+    m_Renderer.SetRenderMode(Engine::Renderer::RenderMode::RayTrace);
+
     // Set up a basic scene with diverse materials.
 
     // Matte ground to provide a neutral backdrop for other objects.
