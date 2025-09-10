@@ -2,23 +2,23 @@
 #include "Utilities/Logging.h"
 
 #include "Scene/Scene.h"
-#include "Tracer/RayTracer.h"
 #include "Tracer/Ray.h"
+#include "Tracer/RayTracer.h"
 
 #include <raylib.h>
-#include <rlImGui.h>
 #include <raymath.h>
+#include <rlImGui.h>
 #ifdef ENGINE_ENABLE_GPU
 #include <rlgl.h>
 #endif
 
 #include <algorithm>
-#include <format>
 #include <chrono>
 #include <cmath>
+#include <filesystem>
+#include <format>
 #include <random>
 #include <string>
-#include <filesystem>
 
 namespace
 {
@@ -38,7 +38,8 @@ namespace Engine
 #ifndef ENGINE_ENABLE_GPU
         // Ensure CPU path is active when the engine is built without GPU support.
         SetRenderMode(RenderMode::RayTrace);
-        std::string l_Warning = "ENGINE_ENABLE_GPU not defined; defaulting to CPU ray tracing";
+        std::string l_Warning =
+            "ENGINE_ENABLE_GPU not defined; defaulting to CPU ray tracing";
         RAY_CORE_WARN(l_Warning);
 #endif
 
@@ -64,40 +65,35 @@ namespace Engine
         // Load the compute shader used for GPU ray tracing.
         if (l_Result)
         {
-            // Resolve the shader location starting from the Sandbox assets directory.
-            // The search walks up the directory tree so the engine can locate assets
-            // regardless of the working directory. Future improvement: centralize
-            // this logic in a dedicated resource manager.
-            std::filesystem::path l_ShaderPath = std::filesystem::path("Sandbox") / "Assets/Shaders/RayTrace.hlsl";
+            // Resolve the shader relative to the executable location.
+            // This avoids manual directory walking and prepares for a future
+            // resource manager to handle asset lookups in a central place.
+            std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.hlsl";
             if (!std::filesystem::exists(l_ShaderPath))
             {
-                std::filesystem::path l_SearchDirectory = std::filesystem::current_path();
-                while (!l_SearchDirectory.empty())
-                {
-                    std::filesystem::path l_Candidate = l_SearchDirectory / l_ShaderPath;
-                    if (std::filesystem::exists(l_Candidate))
-                    {
-                        l_ShaderPath = l_Candidate;
-
-                        break;
-                    }
-
-                    l_SearchDirectory = l_SearchDirectory.parent_path();
-                }
-            }
-
-            std::string l_ShaderPathStr = l_ShaderPath.string();
-            m_GpuPipeline = LoadShader(nullptr, l_ShaderPathStr.c_str());
-            if (m_GpuPipeline.id == 0)
-            {
-                std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPathStr);
+                // Fail early if the shader cannot be found to provide a clear message.
+                std::string l_Message = std::format("Compute shader not found: {}", l_ShaderPath.string());
                 RAY_CORE_ERROR(l_Message);
 
                 l_Result = false;
             }
+
+            else
+            {
+                std::string l_ShaderPathStr = l_ShaderPath.string();
+                m_GpuPipeline = LoadShader(nullptr, l_ShaderPathStr.c_str());
+                if (m_GpuPipeline.id == 0)
+                {
+                    std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPathStr);
+                    RAY_CORE_ERROR(l_Message);
+
+                    l_Result = false;
+                }
+            }
 #endif
 
-            // Future improvement: provide detailed error codes instead of a simple boolean.
+            // Future improvement: provide detailed error codes instead of a simple
+            // boolean.
 
             RAY_CORE_TRACE("Renderer initialized");
 
@@ -167,7 +163,8 @@ namespace Engine
     void Renderer::UpdateCamera(float deltaTime)
     {
         // Delegate input handling to the camera controller.
-        // Centralizing camera logic simplifies future extensions such as custom bindings or editor modes.
+        // Centralizing camera logic simplifies future extensions such as custom
+        // bindings or editor modes.
         m_CameraController.Update(deltaTime);
     }
 
@@ -186,11 +183,13 @@ namespace Engine
             m_RenderTexture = { 0 };
         }
 
-        // Create a new render texture; this enables potential direct drawing without CPU-GPU copy.
+        // Create a new render texture; this enables potential direct drawing without
+        // CPU-GPU copy.
         RenderTexture2D l_NewTexture = LoadRenderTexture(width, height);
         if (l_NewTexture.id == 0)
         {
-            // Preformat message to leverage C++20 formatting and avoid macro-specific format strings
+            // Preformat message to leverage C++20 formatting and avoid macro-specific
+            // format strings
             std::string l_Message = std::format("Failed to allocate render texture {} x {}", width, height);
             RAY_CORE_ERROR(l_Message);
 
@@ -207,7 +206,7 @@ namespace Engine
 
         // Ensure cached pixel buffer matches new dimensions.
         m_CachedPixels.assign(static_cast<size_t>(width) * static_cast<size_t>(height), Color{ 0, 0, 0, 255 });
-        
+
         // Future improvement: handle different pixel formats and color spaces.
         return true;
     }
@@ -283,7 +282,8 @@ namespace Engine
         size_t l_SubBufferSize = static_cast<size_t>(l_UpdateWidth) * static_cast<size_t>(l_UpdateHeight);
         if (m_SubBuffer.size() != l_SubBufferSize)
         {
-            // Future improvement: reserve capacity in larger chunks or use tiling for massive images.
+            // Future improvement: reserve capacity in larger chunks or use tiling for
+            // massive images.
             m_SubBuffer.resize(l_SubBufferSize);
         }
 
@@ -291,20 +291,16 @@ namespace Engine
         {
             Color* l_Dst = &m_SubBuffer[static_cast<size_t>(it_Y) * static_cast<size_t>(l_UpdateWidth)];
             const Color* l_Src = &m_CachedPixels[(l_MinY + it_Y) * width + l_MinX];
+            
             std::copy(l_Src, l_Src + l_UpdateWidth, l_Dst);
         }
 
-        Rectangle l_Rect
-        {
-            static_cast<float>(l_MinX),
-            static_cast<float>(l_MinY),
-            static_cast<float>(l_UpdateWidth),
-            static_cast<float>(l_UpdateHeight)
-        };
+        Rectangle l_Rect{ static_cast<float>(l_MinX), static_cast<float>(l_MinY), static_cast<float>(l_UpdateWidth), static_cast<float>(l_UpdateHeight) };
 
         UpdateTextureRec(m_RenderTexture.texture, l_Rect, m_SubBuffer.data());
 
-        // Future improvement: implement tiled texture updates to further reduce CPU-GPU transfers.
+        // Future improvement: implement tiled texture updates to further reduce
+        // CPU-GPU transfers.
     }
 
     const Camera& Renderer::GetCamera() const
@@ -346,12 +342,14 @@ namespace Engine
             break;
         }
 
-        // GPU mode is ideal for complex scenes or high sample counts when hardware acceleration is available.
+        // GPU mode is ideal for complex scenes or high sample counts when hardware
+        // acceleration is available.
     }
 
     Renderer::RenderMode Renderer::GetRenderMode() const
     {
-        // Report current rendering technique. GPU mode requires ENGINE_ENABLE_GPU at build time.
+        // Report current rendering technique. GPU mode requires ENGINE_ENABLE_GPU at
+        // build time.
         return m_RenderMode;
     }
 
@@ -437,7 +435,10 @@ namespace Engine
         for (unsigned int it_Thread = 0; it_Thread < l_ThreadCount; ++it_Thread)
         {
             // Each thread executes WorkerThread with its ID.
-            m_Workers.emplace_back([this, it_Thread]() { WorkerThread(static_cast<int>(it_Thread)); });
+            m_Workers.emplace_back([this, it_Thread]()
+                {
+                    WorkerThread(static_cast<int>(it_Thread));
+                });
         }
 
         std::chrono::high_resolution_clock::time_point l_SceneEnd = std::chrono::high_resolution_clock::now();
@@ -469,6 +470,7 @@ namespace Engine
 
             return;
         }
+
         m_StopRequested = true;
         for (std::jthread& it_Worker : m_Workers)
         {
@@ -597,6 +599,7 @@ namespace Engine
     void Renderer::WorkerThread(int threadID)
     {
         (void)threadID; // Thread ID currently unused; reserved for future enhancements.
+
         int l_Width = m_Framebuffer.width;
         int l_Height = m_Framebuffer.height;
         std::mt19937& l_Generator = s_Generator; // Reuse thread-local RNG for jitter
@@ -634,7 +637,8 @@ namespace Engine
                 {
                     // Accumulate multiple jittered samples per pixel to reduce aliasing.
                     // This increases render time linearly with the sample count.
-                    // Future improvement: incorporate stratified sampling for better convergence.
+                    // Future improvement: incorporate stratified sampling for better
+                    // convergence.
                     Vector3 l_ColorAccum{ 0.0f, 0.0f, 0.0f };
                     for (int it_Sample = 0; it_Sample < m_SamplesPerPixel; ++it_Sample)
                     {
@@ -649,33 +653,29 @@ namespace Engine
                         Vector3 l_PixelDir = Vector3Normalize(Vector3Add(Vector3Add(l_Forward, Vector3Scale(l_Right, l_NdcX * l_TanFovX)), Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
 
                         Ray l_Ray(m_CurrentCamera.position, l_PixelDir);
-                        // Trace the ray using the configured maximum depth to limit recursion.
-                        // Future improvement: expose m_MaxDepth for runtime tuning.
+                        // Trace the ray using the configured maximum depth to limit
+                        // recursion. Future improvement: expose m_MaxDepth for runtime
+                        // tuning.
                         Vector3 l_SampleColor = RayColor(l_Ray, m_CurrentScene->GetBVH(), m_MaxDepth);
                         l_ColorAccum = Vector3Add(l_ColorAccum, l_SampleColor);
                     }
 
                     Vector3 l_ColorVec = Vector3Scale(l_ColorAccum, 1.0f / static_cast<float>(m_SamplesPerPixel));
 
-                    // Apply gamma correction (gamma = 2.0) to approximate how monitors display
-                    // brightness. This converts the linear color returned by the ray tracer to
-                    // a non-linear representation that better matches human perception.
-                    // Future improvement: make the gamma value configurable for different output
-                    // devices or to disable correction entirely.
-                    Vector3 l_CorrectedColor
-                    {
-                        sqrtf(l_ColorVec.x),
-                        sqrtf(l_ColorVec.y),
-                        sqrtf(l_ColorVec.z)
-                    };
+                    // Apply gamma correction (gamma = 2.0) to approximate how monitors
+                    // display brightness. This converts the linear color returned by the
+                    // ray tracer to a non-linear representation that better matches human
+                    // perception. Future improvement: make the gamma value configurable for
+                    // different output devices or to disable correction entirely.
+                    Vector3 l_CorrectedColor{ sqrtf(l_ColorVec.x), sqrtf(l_ColorVec.y), sqrtf(l_ColorVec.z) };
 
                     // Clamp the gamma-corrected color and convert to 8-bit per channel.
                     Color l_Color
                     {
-                        static_cast<unsigned char>(Clamp(l_CorrectedColor.x, 0.0f, 1.0f) * 255.0f),   // R
-                        static_cast<unsigned char>(Clamp(l_CorrectedColor.y, 0.0f, 1.0f) * 255.0f),   // G
-                        static_cast<unsigned char>(Clamp(l_CorrectedColor.z, 0.0f, 1.0f) * 255.0f),   // B
-                        255                                                                           // A
+                        static_cast<unsigned char>(Clamp(l_CorrectedColor.x, 0.0f, 1.0f) * 255.0f), // R
+                        static_cast<unsigned char>(Clamp(l_CorrectedColor.y, 0.0f, 1.0f) * 255.0f), // G
+                        static_cast<unsigned char>(Clamp(l_CorrectedColor.z, 0.0f, 1.0f) * 255.0f), // B
+                        255                                                                         // A
                     };
 
                     size_t l_Index = static_cast<size_t>(it_Y) * static_cast<size_t>(l_Width) + static_cast<size_t>(it_X);
@@ -691,7 +691,8 @@ namespace Engine
         if (m_WorkersFinished.fetch_add(1) + 1 == static_cast<int>(m_Workers.size()))
         {
             double l_ProcessMs = std::chrono::duration<double, std::milli>(l_End - m_TileProcessingStart).count();
-            // Worker threads record the total tile processing time once all threads finish.
+            // Worker threads record the total tile processing time once all threads
+            // finish.
             {
                 std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
                 m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs });
@@ -703,8 +704,9 @@ namespace Engine
             // Rendering is complete; reset flag so the UI knows no work is active.
             m_IsRendering = false;
 
-            // Join all worker threads to reclaim resources. The current thread cannot join itself,
-            // so join others first and detach this thread before clearing the container.
+            // Join all worker threads to reclaim resources. The current thread cannot
+            // join itself, so join others first and detach this thread before clearing
+            // the container.
             std::thread::id l_ThisThreadID = std::this_thread::get_id();
             for (std::jthread& it_Worker : m_Workers)
             {

@@ -42,41 +42,49 @@ file(GLOB_RECURSE ENGINE_SOURCE
 
 add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCE})
 
-if(ENGINE_ENABLE_GPU)
-    # Directory containing shader source files
+if(MSVC AND ENGINE_ENABLE_GPU)
+    # Locate the HLSL shader compilers. Prefer dxc when available.
+    find_program(ENGINE_DXC dxc)
+    find_program(ENGINE_FXC fxc)
+
     set(ENGINE_SHADER_DIR ${CMAKE_SOURCE_DIR}/Sandbox/Assets/Shaders)
+    file(GLOB ENGINE_HLSL_SHADERS ${ENGINE_SHADER_DIR}/*.hlsl)
 
-    # Gather vertex and fragment shaders for the build
-    file(GLOB ENGINE_SHADER_FILES
-        ${ENGINE_SHADER_DIR}/*.vert
-        ${ENGINE_SHADER_DIR}/*.frag
-    )
+    foreach(ENGINE_SHADER ${ENGINE_HLSL_SHADERS})
+        # Derive output name for the compiled shader object.
+        get_filename_component(ENGINE_SHADER_NAME ${ENGINE_SHADER} NAME_WE)
+        set(ENGINE_SHADER_OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders/${ENGINE_SHADER_NAME}.cso)
 
-    foreach(ENGINE_SHADER ${ENGINE_SHADER_FILES})
-        # Destination path inside the runtime output directory
-        get_filename_component(ENGINE_SHADER_NAME ${ENGINE_SHADER} NAME)
-        set(ENGINE_SHADER_OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders/${ENGINE_SHADER_NAME})
+        if(ENGINE_DXC)
+            set(ENGINE_COMPILE_CMD ${ENGINE_DXC} /T cs_6_0 /E CSMain ${ENGINE_SHADER} /Fo ${ENGINE_SHADER_OUTPUT})
+        elseif(ENGINE_FXC)
+            set(ENGINE_COMPILE_CMD ${ENGINE_FXC} /T cs_5_0 /E CSMain ${ENGINE_SHADER} /Fo ${ENGINE_SHADER_OUTPUT})
+        else()
+            message(FATAL_ERROR "Neither dxc nor fxc shader compiler was found.")
+        endif()
 
-        # Copy the shader file, creating the directory if necessary
+        # Compile the shader and mark the output as a build product.
         add_custom_command(OUTPUT ${ENGINE_SHADER_OUTPUT}
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ENGINE_SHADER} ${ENGINE_SHADER_OUTPUT}
+            COMMAND ${ENGINE_COMPILE_CMD}
             DEPENDS ${ENGINE_SHADER}
-            COMMENT "Copying ${ENGINE_SHADER_NAME}"
+            COMMENT "Compiling ${ENGINE_SHADER_NAME}.hlsl"
             VERBATIM
         )
 
-        list(APPEND ENGINE_COPIED_SHADERS ${ENGINE_SHADER_OUTPUT})
+        list(APPEND ENGINE_COMPILED_SHADERS ${ENGINE_SHADER_OUTPUT})
     endforeach()
 
-    if(ENGINE_COPIED_SHADERS)
-        # Copy shaders alongside the engine and expose them in Visual Studio for editing
-        add_custom_target(EngineShaders ALL DEPENDS ${ENGINE_COPIED_SHADERS})
+    if(ENGINE_COMPILED_SHADERS)
+        # Ensure shaders are built alongside the engine and appear in Visual Studio.
+        add_custom_target(EngineShaders ALL DEPENDS ${ENGINE_COMPILED_SHADERS})
         add_dependencies(${PROJECT_NAME} EngineShaders)
-        target_sources(${PROJECT_NAME} PRIVATE ${ENGINE_SHADER_FILES})
-        source_group("Shaders" FILES ${ENGINE_SHADER_FILES})
+        target_sources(${PROJECT_NAME} PRIVATE ${ENGINE_HLSL_SHADERS})
+        source_group("Shaders" FILES ${ENGINE_HLSL_SHADERS})
     endif()
+endif()
 
+if(ENGINE_ENABLE_GPU)
     target_compile_definitions(${PROJECT_NAME} PUBLIC ENGINE_ENABLE_GPU)
 endif()
 
