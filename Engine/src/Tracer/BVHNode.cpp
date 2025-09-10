@@ -100,4 +100,44 @@ namespace Engine
 
         return false;
     }
+
+    std::uint32_t BVHNode::WriteNode(std::vector<BVHFlatNode>& a_OutNodes, std::vector<Sphere>& a_OutPrimitives) const
+    {
+        // Allocate a slot for this node in the flattened array.
+        std::uint32_t l_Index = static_cast<std::uint32_t>(a_OutNodes.size());
+        a_OutNodes.push_back(BVHFlatNode{});
+        BVHFlatNode& l_Flat = a_OutNodes[l_Index];
+        l_Flat.m_Bounds = m_BoundingBox;
+
+        if (m_IsLeaf)
+        {
+            // Leaf nodes reference a primitive index and have no children.
+            l_Flat.m_IsLeaf = 1;
+            l_Flat.m_Left = 0;
+            l_Flat.m_Right = 0;
+            l_Flat.m_Primitive = static_cast<std::uint32_t>(a_OutPrimitives.size());
+            a_OutPrimitives.push_back(m_Sphere);
+        }
+        else
+        {
+            // Recursively write children first to obtain their indices.
+            std::uint32_t l_LeftIndex = m_Left ? m_Left->WriteNode(a_OutNodes, a_OutPrimitives) : 0;
+            std::uint32_t l_RightIndex = m_Right ? m_Right->WriteNode(a_OutNodes, a_OutPrimitives) : 0;
+            l_Flat.m_IsLeaf = 0;
+            l_Flat.m_Left = l_LeftIndex;
+            l_Flat.m_Right = l_RightIndex;
+            l_Flat.m_Primitive = 0u;
+        }
+
+        return l_Index;
+    }
+
+    void BVHNode::FlattenBVH(std::vector<BVHFlatNode>& a_OutNodes, std::vector<Sphere>& a_OutPrimitives) const
+    {
+        a_OutNodes.clear();
+        a_OutPrimitives.clear();
+
+        // Recursively linearize the hierarchy starting from this node.
+        WriteNode(a_OutNodes, a_OutPrimitives);
+    }
 }

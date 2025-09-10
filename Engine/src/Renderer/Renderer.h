@@ -136,6 +136,8 @@ namespace Engine
         void DispatchGPU(const Scene& scene, const Camera& camera);
 
         Shader m_GpuPipeline{ 0 }; ///< Compute shader pipeline used during RenderMode::RayTraceGPU.
+        unsigned int m_NodeBuffer{ 0 };      ///< GPU buffer containing flattened BVH nodes.
+        unsigned int m_PrimitiveBuffer{ 0 }; ///< GPU buffer containing scene primitives.
 #endif
     };
 }

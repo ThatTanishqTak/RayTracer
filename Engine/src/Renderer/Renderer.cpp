@@ -8,6 +8,9 @@
 #include <raylib.h>
 #include <rlImGui.h>
 #include <raymath.h>
+#ifdef ENGINE_ENABLE_GPU
+#include <rlgl.h>
+#endif
 
 #include <algorithm>
 #include <format>
@@ -86,6 +89,18 @@ namespace Engine
         {
             UnloadShader(m_GpuPipeline);
             m_GpuPipeline = { 0 };
+        }
+
+        if (m_NodeBuffer != 0)
+        {
+            rlUnloadShaderBuffer(m_NodeBuffer);
+            m_NodeBuffer = 0;
+        }
+
+        if (m_PrimitiveBuffer != 0)
+        {
+            rlUnloadShaderBuffer(m_PrimitiveBuffer);
+            m_PrimitiveBuffer = 0;
         }
 #endif
 
@@ -471,12 +486,50 @@ namespace Engine
 #ifdef ENGINE_ENABLE_GPU
     void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
     {
-        (void)scene; // Scene data will be uploaded once GPU backend is finalized.
-
         if (m_GpuPipeline.id == 0)
         {
             // Future improvement: lazily create the compute pipeline here.
             return;
+        }
+
+        // Upload flattened BVH nodes and primitives to shader storage buffers.
+        const std::vector<BVHFlatNode>& l_Nodes = scene.GetFlatNodes();
+        const std::vector<Sphere>& l_Primitives = scene.GetFlatPrimitives();
+
+        if (!l_Nodes.empty())
+        {
+            unsigned int l_Required = static_cast<unsigned int>(l_Nodes.size() * sizeof(BVHFlatNode));
+            if (m_NodeBuffer == 0 || rlGetShaderBufferSize(m_NodeBuffer) < l_Required)
+            {
+                if (m_NodeBuffer != 0)
+                {
+                    rlUnloadShaderBuffer(m_NodeBuffer);
+                }
+                m_NodeBuffer = rlLoadShaderBuffer(l_Required, l_Nodes.data(), RL_STATIC_DRAW);
+            }
+            else
+            {
+                rlUpdateShaderBuffer(m_NodeBuffer, l_Nodes.data(), l_Required, 0);
+            }
+            rlBindShaderBuffer(m_NodeBuffer, 0);
+        }
+
+        if (!l_Primitives.empty())
+        {
+            unsigned int l_Required = static_cast<unsigned int>(l_Primitives.size() * sizeof(Sphere));
+            if (m_PrimitiveBuffer == 0 || rlGetShaderBufferSize(m_PrimitiveBuffer) < l_Required)
+            {
+                if (m_PrimitiveBuffer != 0)
+                {
+                    rlUnloadShaderBuffer(m_PrimitiveBuffer);
+                }
+                m_PrimitiveBuffer = rlLoadShaderBuffer(l_Required, l_Primitives.data(), RL_STATIC_DRAW);
+            }
+            else
+            {
+                rlUpdateShaderBuffer(m_PrimitiveBuffer, l_Primitives.data(), l_Required, 0);
+            }
+            rlBindShaderBuffer(m_PrimitiveBuffer, 1);
         }
 
         // Upload basic per-frame parameters as uniform values.
@@ -484,7 +537,6 @@ namespace Engine
         int l_Location = GetShaderLocation(m_GpuPipeline, "uCameraPos");
         SetShaderValue(m_GpuPipeline, l_Location, &l_CameraPos, SHADER_UNIFORM_VEC3);
 
-        // Pack tracing parameters into a constant buffer for the shader.
         struct TraceParams
         {
             int m_MaxDepth;
