@@ -55,12 +55,13 @@ namespace Engine
         // Load the compute shader used for GPU ray tracing.
         if (l_Result)
         {
-            const char* l_ShaderPath = "Shaders/RayTrace.compute.hlsl";
+            const char* l_ShaderPath = "Assets/Shaders/RayTrace.compute.hlsl";
             m_GpuPipeline = LoadShader(nullptr, l_ShaderPath);
             if (m_GpuPipeline.id == 0)
             {
                 std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPath);
                 RAY_CORE_ERROR(l_Message);
+
                 l_Result = false;
             }
         }
