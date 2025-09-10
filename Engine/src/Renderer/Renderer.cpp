@@ -48,6 +48,21 @@ namespace Engine
             l_Result = ResizeFrameTexture(width, height);
         }
 
+#ifdef ENGINE_ENABLE_GPU
+        // Load the compute shader used for GPU ray tracing.
+        if (l_Result)
+        {
+            const char* l_ShaderPath = "Shaders/RayTrace.compute.hlsl";
+            m_GpuPipeline = LoadShader(nullptr, l_ShaderPath);
+            if (m_GpuPipeline.id == 0)
+            {
+                std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPath);
+                RAY_CORE_ERROR(l_Message);
+                l_Result = false;
+            }
+        }
+#endif
+
         // Future improvement: provide detailed error codes instead of a simple boolean.
 
         RAY_CORE_TRACE("Renderer initialized");
@@ -468,6 +483,16 @@ namespace Engine
         Vector3 l_CameraPos = camera.position;
         int l_Location = GetShaderLocation(m_GpuPipeline, "uCameraPos");
         SetShaderValue(m_GpuPipeline, l_Location, &l_CameraPos, SHADER_UNIFORM_VEC3);
+
+        // Pack tracing parameters into a constant buffer for the shader.
+        struct TraceParams
+        {
+            int m_MaxDepth;
+            int m_SamplesPerPixel;
+        };
+        TraceParams l_Params{ m_MaxDepth, m_SamplesPerPixel };
+        int l_ParamsLoc = GetShaderLocation(m_GpuPipeline, "uParams");
+        SetShaderValue(m_GpuPipeline, l_ParamsLoc, &l_Params, SHADER_UNIFORM_IVEC2);
 
         // Placeholder for compute dispatch; API specifics depend on the GPU backend.
         // rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
