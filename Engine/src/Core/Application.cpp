@@ -64,8 +64,6 @@ namespace Engine
         {
             m_LayerStack.PopOverlay(m_ImGuiLayer.get());
             m_ImGuiLayer.reset();
-
-            rlImGuiShutdown();
         }
 
         if (m_Renderer)
@@ -100,5 +98,56 @@ namespace Engine
     {
         // Provide raw access to the renderer for external modules.
         return m_Renderer.get();
+    }
+
+    void Application::Run()
+    {
+        // Initialize last window position
+        Vector2 l_CurrentPos = GetWindowPosition();
+        m_LastWindowPos = l_CurrentPos;
+
+        // Main loop
+        while (!m_Window->ShouldClose())
+        {
+            // Detect window size changes and update the renderer to match
+            l_CurrentPos = GetWindowPosition();
+            if (IsWindowResized() || m_LastWindowPos.x != l_CurrentPos.x || m_LastWindowPos.y != l_CurrentPos.y)
+            {
+                int l_Width = GetScreenWidth();
+                int l_Height = GetScreenHeight();
+
+                m_Renderer->ResizeFrameTexture(l_Width, l_Height); // Prevent image clipping
+                m_LastWindowPos = l_CurrentPos; // Update last position
+                // Future improvement: adjust camera aspect ratio on resize.
+            }
+
+            float l_DeltaTime = GetFrameTime();
+            m_Renderer->UpdateCamera(l_DeltaTime); // Handle camera navigation
+
+            // Render
+            m_Renderer->BeginFrame();
+            {
+                // Scene phase
+                for (Layer* it_Layer : m_LayerStack)
+                {
+                    it_Layer->OnSceneRender();
+                }
+
+                // ImGui phase
+                m_ImGuiLayer->BeginFrame();
+                for (Layer* it_Layer : m_LayerStack)
+                {
+                    it_Layer->OnImGuiRender();
+                }
+                m_ImGuiLayer->EndFrame();
+            }
+            m_Renderer->EndFrame();
+
+            // Update phase
+            for (Layer* it_Layer : m_LayerStack)
+            {
+                it_Layer->OnUpdate(l_DeltaTime);
+            }
+        }
     }
 }

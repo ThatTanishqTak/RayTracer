@@ -23,7 +23,6 @@ namespace Engine
     {
         // Release any textures registered through ImGui's platform IO
         // before tearing down the backend.
-        CleanupTextures();
 
         // Shutdown the Raylib backend and destroy the ImGui context.
         ImGui_ImplRaylib_Shutdown();
@@ -38,10 +37,5 @@ namespace Engine
     void ImGuiLayer::EndFrame()
     {
         rlImGuiEnd();
-    }
-
-    void ImGuiLayer::CleanupTextures()
-    {
-
     }
 }

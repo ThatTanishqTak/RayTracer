@@ -90,7 +90,7 @@ namespace Engine
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
         RenderTexture2D m_RenderTexture = { 0 }; ///Render texture backing the frame buffer.
-        RenderMode m_RenderMode = RenderMode::Raster; ///Current rendering approach; TODO: add GPU compute path.
+        RenderMode m_RenderMode = RenderMode::RayTrace; ///Current rendering approach; TODO: add GPU compute path.
         int m_FrameWidth = 0; ///Cached width of the frame texture.
         int m_FrameHeight = 0; ///Cached height of the frame texture.
         std::vector<Color> m_CachedPixels = { }; ///Copy of last uploaded pixel data.

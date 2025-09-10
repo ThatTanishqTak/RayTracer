@@ -56,56 +56,7 @@ namespace Engine
          *\brief Main execution loop. Handles rendering and updating of all layers
          *       until the window requests closure.
          */
-        virtual void Run()
-        {
-            // Initialize last window position
-            Vector2 currentPos = GetWindowPosition();
-            m_LastWindowPos = currentPos;
-
-            // Main loop
-            while (!m_Window->ShouldClose())
-            {
-                // Detect window size changes and update the renderer to match
-                currentPos = GetWindowPosition();
-                if (IsWindowResized() || m_LastWindowPos.x != currentPos.x || m_LastWindowPos.y != currentPos.y)
-                {
-                    int l_Width = GetScreenWidth();
-                    int l_Height = GetScreenHeight();
-
-                    m_Renderer->ResizeFrameTexture(l_Width, l_Height); // Prevent image clipping
-                    m_LastWindowPos = currentPos; // Update last position
-                    // Future improvement: adjust camera aspect ratio on resize.
-                }
-
-                float l_DeltaTime = GetFrameTime();
-                m_Renderer->UpdateCamera(l_DeltaTime); // Handle camera navigation
-
-                // Render
-                m_Renderer->BeginFrame();
-                {
-                    // Scene phase
-                    for (Layer* it_Layer : m_LayerStack)
-                    {
-                        it_Layer->OnSceneRender();
-                    }
-
-                    // ImGui phase
-                    m_ImGuiLayer->BeginFrame();
-                    for (Layer* it_Layer : m_LayerStack)
-                    {
-                        it_Layer->OnImGuiRender();
-                    }
-                    m_ImGuiLayer->EndFrame();
-                }
-                m_Renderer->EndFrame();
-
-                // Update phase
-                for (Layer* it_Layer : m_LayerStack)
-                {
-                    it_Layer->OnUpdate(l_DeltaTime);
-                }
-            }
-        }
+        virtual void Run();
 
     private:
         std::unique_ptr<Window> m_Window; /// Handle to the OS window instance.

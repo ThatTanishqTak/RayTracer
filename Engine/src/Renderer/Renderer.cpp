@@ -65,9 +65,6 @@ namespace Engine
             UnloadRenderTexture(m_RenderTexture);
         }
 
-        // Tear down ImGui integration.
-        rlImGuiShutdown();
-
         RAY_CORE_TRACE("Renderer shutdown complete");
     }
 
@@ -256,10 +253,10 @@ namespace Engine
         return m_TileSize;
     }
 
-    void Renderer::SetRenderMode(RenderMode a_Mode)
+    void Renderer::SetRenderMode(RenderMode mode)
     {
         // Switch between rasterization and ray tracing pipelines.
-        m_RenderMode = a_Mode;
+        m_RenderMode = mode;
         // Future improvement: reconfigure shaders or dispatch GPU compute tasks for hybrid rendering.
     }
 
@@ -441,10 +438,7 @@ namespace Engine
                         float l_NdcY = 1.0f - ((static_cast<float>(it_Y) + l_OffsetY) / static_cast<float>(l_Height)) * 2.0f;
 
                         // Ray direction through the pixel on the virtual image plane.
-                        Vector3 l_PixelDir = Vector3Normalize(
-                            Vector3Add(
-                                Vector3Add(l_Forward, Vector3Scale(l_Right, l_NdcX * l_TanFovX)),
-                                Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
+                        Vector3 l_PixelDir = Vector3Normalize(Vector3Add(Vector3Add(l_Forward, Vector3Scale(l_Right, l_NdcX * l_TanFovX)), Vector3Scale(l_Up, l_NdcY * l_TanFovY)));
 
                         Ray l_Ray(m_CurrentCamera.position, l_PixelDir);
                         // Trace the ray using the configured maximum depth to limit recursion.
@@ -517,6 +511,7 @@ namespace Engine
                 if (it_Worker.get_id() == l_ThisThreadID && it_Worker.joinable())
                 {
                     it_Worker.detach();
+
                     break;
                 }
             }
