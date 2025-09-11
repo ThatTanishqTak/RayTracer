@@ -112,24 +112,17 @@ namespace Engine
 
                         if (l_ShaderId == 0)
                         {
-                            std::string l_Message = std::format(
-                                "Failed to compile compute shader: {}",
-                                l_ShaderPathStr);
-                            RAY_CORE_ERROR(l_Message);
+                            RAY_CORE_ERROR("Failed to compile compute shader: {}", l_ShaderPathStr);
 
                             l_Result = false;
                         }
 
                         else
                         {
-                            unsigned int l_ProgramId =
-                                rlLoadComputeShaderProgram(l_ShaderId);
+                            unsigned int l_ProgramId = rlLoadComputeShaderProgram(l_ShaderId);
                             if (l_ProgramId == 0)
                             {
-                                std::string l_Message = std::format(
-                                    "Failed to link compute shader program: {}",
-                                    l_ShaderPathStr);
-                                RAY_CORE_ERROR(l_Message);
+                                RAY_CORE_ERROR("Failed to link compute shader program: {}", l_ShaderPathStr);
 
                                 l_Result = false;
                             }
