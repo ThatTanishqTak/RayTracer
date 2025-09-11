@@ -1,4 +1,5 @@
 #include "Tracer/BVHNode.h"
+#include "Renderer/Material.h"
 
 #include <algorithm>
 #include <random>
@@ -101,12 +102,12 @@ namespace Engine
         return false;
     }
 
-    std::uint32_t BVHNode::WriteNode(std::vector<BVHFlatNode>& a_OutNodes, std::vector<Sphere>& a_OutPrimitives) const
+    std::uint32_t BVHNode::WriteNode(std::vector<BVHFlatNode>& outNodes, std::vector<SphereGPU>& outPrimitives, std::vector<MaterialGPU>& outMaterials) const
     {
         // Allocate a slot for this node in the flattened array.
-        std::uint32_t l_Index = static_cast<std::uint32_t>(a_OutNodes.size());
-        a_OutNodes.push_back(BVHFlatNode{});
-        BVHFlatNode& l_Flat = a_OutNodes[l_Index];
+        std::uint32_t l_Index = static_cast<std::uint32_t>(outNodes.size());
+        outNodes.push_back(BVHFlatNode{});
+        BVHFlatNode& l_Flat = outNodes[l_Index];
         l_Flat.m_Bounds = m_BoundingBox;
 
         if (m_IsLeaf)
@@ -115,14 +116,32 @@ namespace Engine
             l_Flat.m_IsLeaf = 1;
             l_Flat.m_Left = 0;
             l_Flat.m_Right = 0;
-            l_Flat.m_Primitive = static_cast<std::uint32_t>(a_OutPrimitives.size());
-            a_OutPrimitives.push_back(m_Sphere);
+            l_Flat.m_Primitive = static_cast<std::uint32_t>(outPrimitives.size());
+
+            // Serialize primitive data for GPU consumption.
+            SphereGPU l_GpuSphere{};
+            l_GpuSphere.m_Center = m_Sphere.GetCenter();
+            l_GpuSphere.m_Radius = m_Sphere.GetRadius();
+            l_GpuSphere.m_MaterialIndex = static_cast<std::uint32_t>(outMaterials.size());
+            outPrimitives.push_back(l_GpuSphere);
+
+            // Extract material parameters into the parallel material array.
+            MaterialGPU l_GpuMaterial{};
+            if (std::shared_ptr<Material> l_Material = m_Sphere.GetMaterial())
+            {
+                l_GpuMaterial.m_Albedo = l_Material->GetAlbedo();
+                l_GpuMaterial.m_Fuzz = l_Material->GetFuzz();
+                l_GpuMaterial.m_RefIdx = l_Material->GetIOR();
+                l_GpuMaterial.m_Type = static_cast<std::uint32_t>(l_Material->GetType());
+            }
+            outMaterials.push_back(l_GpuMaterial);
         }
+
         else
         {
             // Recursively write children first to obtain their indices.
-            std::uint32_t l_LeftIndex = m_Left ? m_Left->WriteNode(a_OutNodes, a_OutPrimitives) : 0;
-            std::uint32_t l_RightIndex = m_Right ? m_Right->WriteNode(a_OutNodes, a_OutPrimitives) : 0;
+            std::uint32_t l_LeftIndex = m_Left ? m_Left->WriteNode(outNodes, outPrimitives, outMaterials) : 0;
+            std::uint32_t l_RightIndex = m_Right ? m_Right->WriteNode(outNodes, outPrimitives, outMaterials) : 0;
             l_Flat.m_IsLeaf = 0;
             l_Flat.m_Left = l_LeftIndex;
             l_Flat.m_Right = l_RightIndex;
@@ -132,12 +151,13 @@ namespace Engine
         return l_Index;
     }
 
-    void BVHNode::FlattenBVH(std::vector<BVHFlatNode>& a_OutNodes, std::vector<Sphere>& a_OutPrimitives) const
+    void BVHNode::FlattenBVH(std::vector<BVHFlatNode>& outNodes, std::vector<SphereGPU>& outPrimitives, std::vector<MaterialGPU>& outMaterials) const
     {
-        a_OutNodes.clear();
-        a_OutPrimitives.clear();
+        outNodes.clear();
+        outPrimitives.clear();
+        outMaterials.clear();
 
         // Recursively linearize the hierarchy starting from this node.
-        WriteNode(a_OutNodes, a_OutPrimitives);
+        WriteNode(outNodes, outPrimitives, outMaterials);
     }
 }

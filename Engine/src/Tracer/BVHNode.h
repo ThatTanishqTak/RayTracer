@@ -2,6 +2,7 @@
 
 #include "Tracer/BoundingBox.h"
 #include "Tracer/Sphere.h"
+#include "Tracer/GPUPrimitives.h"
 
 #include <memory>
 #include <random>
@@ -48,7 +49,7 @@ namespace Engine
         * \brief Flatten the tree into a linear array of nodes and primitives.
         * The resulting arrays contain child indices, suitable for GPU traversal.
         */
-        void FlattenBVH(std::vector<BVHFlatNode>& a_OutNodes, std::vector<Sphere>& a_OutPrimitives) const;
+        void FlattenBVH(std::vector<BVHFlatNode>& outNodes, std::vector<SphereGPU>& outPrimitives, std::vector<MaterialGPU>& outMaterials) const;
 
     private:
         std::shared_ptr<BVHNode> m_Left{};   ///< Left child in the tree.
@@ -61,6 +62,6 @@ namespace Engine
         * \brief Recursive helper used by FlattenBVH to linearize the hierarchy.
         * @return Index of the newly written flat node.
         */
-        std::uint32_t WriteNode(std::vector<BVHFlatNode>& a_OutNodes, std::vector<Sphere>& a_OutPrimitives) const;
+        std::uint32_t WriteNode(std::vector<BVHFlatNode>& outNode, std::vector<SphereGPU>& outPrimitives, std::vector<MaterialGPU>& outMaterials) const;
     };
 }

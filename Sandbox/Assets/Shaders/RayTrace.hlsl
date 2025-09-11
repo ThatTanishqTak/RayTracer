@@ -11,12 +11,12 @@ static const uint MATERIAL_LAMBERTIAN = 0;
 static const uint MATERIAL_METAL = 1;
 static const uint MATERIAL_DIELECTRIC = 2;
 
-// Material properties flattened alongside each primitive.
-struct MaterialData
+// Plain-old-data material used by the GPU.
+struct MaterialGPU
 {
     float3 m_Albedo; // Base color
-    float m_Fuzz; // Metal fuzziness or padding for Lambertian
-    float m_RefIdx; // Index of refraction for dielectrics
+    float m_Fuzz; // Metal fuzziness
+    float m_RefIdx; // Index of refraction
     uint m_Type; // Material type selector
 };
 
@@ -25,7 +25,8 @@ struct Sphere
 {
     float3 m_Center; // Sphere center
     float m_Radius; // Sphere radius
-    MaterialData m_Material; // Surface material parameters
+    uint m_MaterialIndex; // Index into material buffer
+    float3 m_Padding; // Alignment padding
 };
 
 // Axis aligned bounding box stored in the BVH nodes.
@@ -59,21 +60,31 @@ struct HitRecord
 
 StructuredBuffer<BVHFlatNode> g_Nodes : register(t0); // Flattened BVH nodes
 StructuredBuffer<Sphere> g_Spheres : register(t1); // Primitive data
+StructuredBuffer<MaterialGPU> g_Materials : register(t2); // Material parameters
 RWTexture2D<float4> g_Output : register(u0); // Render target
 
 // --------------------------------------------------------------------------------------
 // Random number generation utilities
 // --------------------------------------------------------------------------------------
-uint LCG(inout uint l_State)
+uint PCGHash(uint l_State)
 {
-    l_State = l_State * 1664525u + 1013904223u; // Linear congruential generator
-    return l_State;
+    l_State = l_State * 747796405u + 2891336453u;
+    uint l_Word = ((l_State >> ((l_State >> 28u) + 4u)) ^ l_State) * 277803737u;
+    return (l_Word >> 22u) ^ l_Word;
 }
 
 float RandomFloat(inout uint l_State)
 {
-    return (LCG(l_State) & 0x00FFFFFFu) / 16777216.0f;
+    l_State = PCGHash(l_State);
+    return l_State / 4294967296.0f;
 }
+
+uint SeedFromPixel(uint2 l_Pixel)
+{
+    uint l_State = l_Pixel.x * 1973u + l_Pixel.y * 9277u + 8917u;
+    return PCGHash(l_State);
+}
+
 
 float3 RandomInUnitSphere(inout uint l_State)
 {
@@ -161,10 +172,12 @@ bool HitSphere(Ray l_Ray, Sphere l_Sphere, float l_tMin, float l_tMax, out HitRe
     float3 l_OutwardNormal = (l_Record.m_Point - l_Sphere.m_Center) / l_Sphere.m_Radius;
     l_Record.m_FrontFace = dot(l_Ray.m_Direction, l_OutwardNormal) < 0.0f;
     l_Record.m_Normal = l_Record.m_FrontFace ? l_OutwardNormal : -l_OutwardNormal;
-    l_Record.m_MaterialType = l_Sphere.m_Material.m_Type;
-    l_Record.m_Albedo = l_Sphere.m_Material.m_Albedo;
-    l_Record.m_Fuzz = l_Sphere.m_Material.m_Fuzz;
-    l_Record.m_RefIdx = l_Sphere.m_Material.m_RefIdx;
+    // Fetch material properties using the referenced index.
+    MaterialGPU l_Mat = g_Materials[l_Sphere.m_MaterialIndex];
+    l_Record.m_MaterialType = l_Mat.m_Type;
+    l_Record.m_Albedo = l_Mat.m_Albedo;
+    l_Record.m_Fuzz = l_Mat.m_Fuzz;
+    l_Record.m_RefIdx = l_Mat.m_RefIdx;
 
     return true;
 }
@@ -305,7 +318,7 @@ void CSMain(uint3 l_DispatchThreadID : SV_DispatchThreadID)
     uint l_Width, l_Height;
     g_Output.GetDimensions(l_Width, l_Height); // Query render target size
 
-    uint l_Seed = l_DispatchThreadID.x + l_DispatchThreadID.y * l_Width; // Per-thread RNG seed
+    uint l_Seed = SeedFromPixel(l_DispatchThreadID.xy); // Deterministic per-pixel seed
     float3 l_AccumColor = float3(0.0f, 0.0f, 0.0f);
 
     // Multi-sample each pixel for basic anti-aliasing.

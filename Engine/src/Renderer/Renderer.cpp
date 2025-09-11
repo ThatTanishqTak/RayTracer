@@ -4,6 +4,7 @@
 #include "Scene/Scene.h"
 #include "Tracer/Ray.h"
 #include "Tracer/RayTracer.h"
+#include "Tracer/GPUPrimitives.h"
 
 #include <raylib.h>
 #include <raymath.h>
@@ -176,6 +177,12 @@ namespace Engine
         {
             rlUnloadShaderBuffer(m_PrimitiveBuffer);
             m_PrimitiveBuffer = 0;
+        }
+
+        if (m_MaterialBuffer != 0)
+        {
+            rlUnloadShaderBuffer(m_MaterialBuffer);
+            m_MaterialBuffer = 0;
         }
 #endif
 
@@ -583,7 +590,8 @@ namespace Engine
 
         // Upload flattened BVH nodes and primitives to shader storage buffers.
         const std::vector<BVHFlatNode>& l_Nodes = scene.GetFlatNodes();
-        const std::vector<Sphere>& l_Primitives = scene.GetFlatPrimitives();
+        const std::vector<SphereGPU>& l_Primitives = scene.GetFlatPrimitives();
+        const std::vector<MaterialGPU>& l_Materials = scene.GetFlatMaterials();
 
         if (!l_Nodes.empty())
         {
@@ -606,7 +614,7 @@ namespace Engine
 
         if (!l_Primitives.empty())
         {
-            unsigned int l_Required = static_cast<unsigned int>(l_Primitives.size() * sizeof(Sphere));
+            unsigned int l_Required = static_cast<unsigned int>(l_Primitives.size() * sizeof(SphereGPU));
             if (m_PrimitiveBuffer == 0 || rlGetShaderBufferSize(m_PrimitiveBuffer) < l_Required)
             {
                 if (m_PrimitiveBuffer != 0)
@@ -621,6 +629,25 @@ namespace Engine
                 rlUpdateShaderBuffer(m_PrimitiveBuffer, l_Primitives.data(), l_Required, 0);
             }
             rlBindShaderBuffer(m_PrimitiveBuffer, 1);
+        }
+
+        if (!l_Materials.empty())
+        {
+            unsigned int l_Required = static_cast<unsigned int>(l_Materials.size() * sizeof(MaterialGPU));
+            if (m_MaterialBuffer == 0 || rlGetShaderBufferSize(m_MaterialBuffer) < l_Required)
+            {
+                if (m_MaterialBuffer != 0)
+                {
+                    rlUnloadShaderBuffer(m_MaterialBuffer);
+                }
+                m_MaterialBuffer = rlLoadShaderBuffer(l_Required, l_Materials.data(), RL_STATIC_DRAW);
+            }
+
+            else
+            {
+                rlUpdateShaderBuffer(m_MaterialBuffer, l_Materials.data(), l_Required, 0);
+            }
+            rlBindShaderBuffer(m_MaterialBuffer, 2);
         }
 
         // Upload basic per-frame parameters as uniform values.

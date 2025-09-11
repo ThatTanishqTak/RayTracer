@@ -139,6 +139,7 @@ namespace Engine
         Shader m_GpuPipeline{ 0 }; ///< Compute shader pipeline used during RenderMode::RayTraceGPU.
         unsigned int m_NodeBuffer{ 0 };      ///< GPU buffer containing flattened BVH nodes.
         unsigned int m_PrimitiveBuffer{ 0 }; ///< GPU buffer containing scene primitives.
+        unsigned int m_MaterialBuffer{ 0 };  ///< GPU buffer containing material parameters.
 #endif
     };
 }

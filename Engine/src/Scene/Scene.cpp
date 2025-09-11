@@ -23,9 +23,14 @@ namespace Engine
         return m_FlatNodes;
     }
 
-    const std::vector<Sphere>& Scene::GetFlatPrimitives() const
+    const std::vector<SphereGPU>& Scene::GetFlatPrimitives() const
     {
         return m_FlatPrimitives;
+    }
+
+    const std::vector<MaterialGPU>& Scene::GetFlatMaterials() const
+    {
+        return m_FlatMaterials;
     }
 
     void Scene::RebuildBVH()
@@ -33,8 +38,8 @@ namespace Engine
         if (!m_Spheres.empty())
         {
             m_BVHRoot.Rebuild(m_Spheres, m_RandomEngine);
-            // Convert the pointer-based BVH into a linear array for GPU use.
-            m_BVHRoot.FlattenBVH(m_FlatNodes, m_FlatPrimitives);
+            // Convert the pointer-based BVH into linear arrays for GPU use.
+            m_BVHRoot.FlattenBVH(m_FlatNodes, m_FlatPrimitives, m_FlatMaterials);
         }
     }
 }

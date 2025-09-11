@@ -2,6 +2,7 @@
 
 #include "Tracer/Sphere.h"
 #include "Tracer/BVHNode.h"
+#include "Tracer/GPUPrimitives.h"
 
 #include <random>
 #include <vector>
@@ -40,7 +41,12 @@ namespace Engine
         /**
          * @brief Access the flattened primitive list for GPU upload.
          */
-        const std::vector<Sphere>& GetFlatPrimitives() const;
+        const std::vector<SphereGPU>& GetFlatPrimitives() const;
+
+        /**
+         * @brief Access the flattened material list for GPU upload.
+         */
+        const std::vector<MaterialGPU>& GetFlatMaterials() const;
 
     private:
         /**
@@ -52,7 +58,8 @@ namespace Engine
         BVHNode m_BVHRoot{};             ///< Root node of the BVH.
         std::mt19937 m_RandomEngine{ std::random_device{}() }; ///< Random engine for BVH builds.
         std::vector<BVHFlatNode> m_FlatNodes{}; ///< Flattened BVH for GPU traversal.
-        std::vector<Sphere> m_FlatPrimitives{}; ///< Flattened primitive array.
+        std::vector<SphereGPU> m_FlatPrimitives{}; ///< Flattened primitive array.
+        std::vector<MaterialGPU> m_FlatMaterials{}; ///< Flattened material array.
 
         // TODO: Implement instancing & geometry caching
     };
