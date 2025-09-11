@@ -50,6 +50,9 @@ namespace Engine
             const char* l_Code = "";
             switch (level)
             {
+            case Logging::LogLevel::_TRACE:
+                l_Code = "\x1B[37m"; // white
+                break;
             case Logging::LogLevel::_INFO:
                 l_Code = "\x1B[32m"; // Green
                 break;

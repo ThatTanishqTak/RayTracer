@@ -38,9 +38,8 @@ namespace Engine
 #ifndef ENGINE_ENABLE_GPU
         // Ensure CPU path is active when the engine is built without GPU support.
         SetRenderMode(RenderMode::RayTrace);
-        std::string l_Warning =
-            "ENGINE_ENABLE_GPU not defined; defaulting to CPU ray tracing";
-        RAY_CORE_WARN(l_Warning);
+        std::string l_Warning = "ENGINE_ENABLE_GPU not defined; defaulting to CPU ray tracing";
+        RAY_CORE_ERROR(l_Warning);
 #endif
 
         // Initialize ImGui for raylib and store the result.
@@ -65,40 +64,94 @@ namespace Engine
         // Load the compute shader used for GPU ray tracing.
         if (l_Result)
         {
-            // Resolve the shader relative to the executable location.
-            // This avoids manual directory walking and prepares for a future
-            // resource manager to handle asset lookups in a central place.
-            std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.hlsl";
-            if (!std::filesystem::exists(l_ShaderPath))
+            // Compute shaders require OpenGL 4.3 or equivalent. If the platform
+            // lacks the required support, fall back to the CPU path and warn the
+            // user. This keeps initialization successful while disabling GPU
+            // tracing.
+            if (rlGetVersion() < RL_OPENGL_43)
             {
-                // Fail early if the shader cannot be found to provide a clear message.
-                std::string l_Message = std::format("Compute shader not found: {}", l_ShaderPath.string());
-                RAY_CORE_ERROR(l_Message);
+                RAY_CORE_WARNING("Compute shaders unsupported; defaulting to CPU ray tracing");
 
-                l_Result = false;
+                SetRenderMode(RenderMode::RayTrace);
             }
 
             else
             {
-                std::string l_ShaderPathStr = l_ShaderPath.string();
-                m_GpuPipeline = LoadShader(nullptr, l_ShaderPathStr.c_str());
-                if (m_GpuPipeline.id == 0)
+                // Resolve the shader relative to the executable location.
+                // This avoids manual directory walking and prepares for a future
+                // resource manager to handle asset lookups in a central place.
+                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.hlsl";
+                if (!std::filesystem::exists(l_ShaderPath))
                 {
-                    std::string l_Message = std::format("Failed to load compute shader: {}", l_ShaderPathStr);
-                    RAY_CORE_ERROR(l_Message);
+                    // Fail early if the shader cannot be found to provide a clear message.
+                    RAY_CORE_ERROR("Compute shader not found: {}", l_ShaderPath.string());
 
                     l_Result = false;
                 }
+
+                else
+                {
+                    std::string l_ShaderPathStr = l_ShaderPath.string();
+
+                    // Load and compile the compute shader. LoadShader cannot be
+                    // used because it only handles vertex/fragment pipelines, so
+                    // the compute-specific rlLoadComputeShaderProgram is
+                    // required here.
+                    char* l_ShaderCode = LoadFileText(l_ShaderPathStr.c_str());
+                    if (l_ShaderCode == nullptr)
+                    {
+                        RAY_CORE_ERROR("Failed to read compute shader: {}", l_ShaderPathStr);
+
+                        l_Result = false;
+                    }
+
+                    else
+                    {
+                        unsigned int l_ShaderId = rlCompileShader(l_ShaderCode, RL_COMPUTE_SHADER);
+                        UnloadFileText(l_ShaderCode);
+
+                        if (l_ShaderId == 0)
+                        {
+                            std::string l_Message = std::format(
+                                "Failed to compile compute shader: {}",
+                                l_ShaderPathStr);
+                            RAY_CORE_ERROR(l_Message);
+
+                            l_Result = false;
+                        }
+
+                        else
+                        {
+                            unsigned int l_ProgramId =
+                                rlLoadComputeShaderProgram(l_ShaderId);
+                            if (l_ProgramId == 0)
+                            {
+                                std::string l_Message = std::format(
+                                    "Failed to link compute shader program: {}",
+                                    l_ShaderPathStr);
+                                RAY_CORE_ERROR(l_Message);
+
+                                l_Result = false;
+                            }
+
+                            else
+                            {
+                                m_GpuPipeline.id = l_ProgramId;
+                                m_GpuPipeline.locs = nullptr;
+                            }
+                        }
+                    }
+                }
             }
+        }
 #endif
 
-            // Future improvement: provide detailed error codes instead of a simple
-            // boolean.
+        // Future improvement: provide detailed error codes instead of a simple
+        // boolean.
 
-            RAY_CORE_TRACE("Renderer initialized");
+        RAY_CORE_TRACE("Renderer initialized");
 
-            return l_Result;
-        }
+        return l_Result;
     }
 
     void Renderer::Shutdown()
@@ -115,7 +168,8 @@ namespace Engine
         // Release GPU compute resources when previously allocated.
         if (m_GpuPipeline.id != 0)
         {
-            UnloadShader(m_GpuPipeline);
+            // Use compute-specific unload to match rlLoadComputeShaderProgram.
+            rlUnloadShaderProgram(m_GpuPipeline.id);
             m_GpuPipeline = { 0 };
         }
 
