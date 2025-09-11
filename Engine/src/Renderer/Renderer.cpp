@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <filesystem>
 #include <format>
 #include <random>
@@ -432,6 +433,17 @@ namespace Engine
         m_IsRendering = true;
         m_GpuDispatched = false; // Reset GPU dispatch flag for this render pass
 
+#ifdef ENGINE_ENABLE_GPU
+        if (m_GpuFence != nullptr)
+        {
+            // Release leftover fence from a previous run.
+            glDeleteSync(m_GpuFence);
+            m_GpuFence = nullptr;
+        }
+        m_GpuCompleted = false;          // No GPU result yet
+        m_GpuCompletionNotified = false; // UI has not been informed of completion
+#endif
+
         // Allocate or resize the frame buffer to match the current window size.
         int l_Width = GetScreenWidth();
         int l_Height = GetScreenHeight();
@@ -458,6 +470,9 @@ namespace Engine
             std::chrono::high_resolution_clock::time_point l_DispatchStart = l_SceneEnd;
             DispatchGPU(scene, camera);
             m_GpuDispatched = true; // Mark that the GPU path executed
+            // Insert a fence so the CPU can later query when the GPU work is finished.
+            m_GpuFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+            glFlush(); // Ensure the GPU begins processing the queued work
             std::chrono::high_resolution_clock::time_point l_DispatchEnd = std::chrono::high_resolution_clock::now();
             double l_DispatchMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - l_DispatchStart).count();
             {
@@ -466,7 +481,7 @@ namespace Engine
             }
             m_RenderDurationMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - m_RenderStart).count();
 #endif
-            m_IsRendering = false;
+            // GPU work runs asynchronously; keep m_IsRendering true until the fence signals.
 
             return;
         }
@@ -518,7 +533,28 @@ namespace Engine
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
 #ifdef ENGINE_ENABLE_GPU
-            // Future improvement: cancel GPU work if API supports it.
+            if (m_GpuFence != nullptr)
+            {
+                // Wait for any outstanding GPU work. OpenGL lacks explicit cancellation,
+                // so the CPU blocks here until the fence signals completion.
+                // Future improvement: attempt true cancellation on APIs that support it.
+                glClientWaitSync(m_GpuFence, GL_SYNC_FLUSH_COMMANDS_BIT, UINT64_MAX);
+                glDeleteSync(m_GpuFence);
+                m_GpuFence = nullptr;
+            }
+
+            if (!m_GpuCompleted)
+            {
+                // Retrieve the texture contents so GetFrame() has valid data even when
+                // StopRender() is invoked before GetProgress() observes completion.
+                if (m_Framebuffer.data != nullptr)
+                {
+                    UnloadImage(m_Framebuffer);
+                }
+                m_Framebuffer = LoadImageFromTexture(m_RenderTexture.texture);
+                m_GpuCompleted = true;
+                m_GpuCompletionNotified = false; // Allow UI to observe completion once
+            }
 #endif
             m_IsRendering = false;
 
@@ -548,35 +584,63 @@ namespace Engine
         return m_Framebuffer;
     }
 
-    float Renderer::GetProgress() const
+    float Renderer::GetProgress()
     {
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
-            // GPU dispatch is treated as a single step.
-            if (!m_IsRendering && !m_GpuDispatched)
+#ifdef ENGINE_ENABLE_GPU
+            if (m_GpuFence != nullptr && !m_GpuCompleted)
+            {
+                // Poll the fence with zero timeout so the CPU never stalls.
+                GLenum l_Result = glClientWaitSync(m_GpuFence, 0, 0);
+                if (l_Result == GL_ALREADY_SIGNALED || l_Result == GL_CONDITION_SATISFIED)
+                {
+                    glDeleteSync(m_GpuFence);
+                    m_GpuFence = nullptr;
+                    // Read back the texture so GetFrame() exposes the GPU result.
+                    // Future improvement: perform this read-back asynchronously to
+                    // avoid stalling the main thread on large frames.
+                    if (m_Framebuffer.data != nullptr)
+                    {
+                        UnloadImage(m_Framebuffer);
+                    }
+                    m_Framebuffer = LoadImageFromTexture(m_RenderTexture.texture);
+                    m_GpuCompleted = true;
+                    m_GpuCompletionNotified = false; // Ensure one more frame renders the result
+                }
+            }
+
+            if (m_GpuCompleted)
+            {
+                if (!m_GpuCompletionNotified)
+                {
+                    // Report completion once while keeping m_IsRendering true so the caller
+                    // can blit the final frame this frame.
+                    m_GpuCompletionNotified = true;
+                    return 1.0f;
+                }
+
+                if (m_IsRendering)
+                {
+                    // On the following frame flip the flag so rendering code knows GPU work ended.
+                    m_IsRendering = false;
+                }
+
+                return 1.0f;
+            }
+
+            if (!m_GpuDispatched)
             {
                 // No dispatch occurred; report zero progress for clarity.
                 return 0.0f;
             }
 
-            return m_IsRendering ? 0.0f : 1.0f;
-        }
-
-        // Avoid division by zero in cases where no render has been scheduled yet.
-        if (m_TotalTiles == 0)
-        {
+            return 0.0f; // Dispatch in flight
+#else
+            (void)m_GpuDispatched; // Avoid unused member warning in non-GPU builds
             return 0.0f;
+#endif
         }
-
-        return m_TilesCompleted.load() / static_cast<float>(m_TotalTiles);
-    }
-
-    std::vector<RenderStep> Renderer::GetRenderSteps() const
-    {
-        // Copy the step list under lock to avoid exposing mutable state.
-        std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
-
-        return m_Steps;
     }
 
 #ifdef ENGINE_ENABLE_GPU
@@ -672,12 +736,12 @@ namespace Engine
 
         // Launch one work group per 8x8 tile of the framebuffer. The work group
         // size is chosen to match the layout expected by the compute shader.
-        //rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
+        rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
 
         // Ensure all writes to the image are complete before the texture is used
         // for presentation. Without this barrier some GPUs could display partially
         // updated data.
-        //rlMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        rlMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         // The result now lives in m_RenderTexture and can be presented directly.
         // Future improvement: read back into m_Framebuffer for CPU-side effects or
