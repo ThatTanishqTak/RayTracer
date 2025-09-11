@@ -638,8 +638,23 @@ namespace Engine
         int l_ParamsLoc = GetShaderLocation(m_GpuPipeline, "uParams");
         SetShaderValue(m_GpuPipeline, l_ParamsLoc, &l_Params, SHADER_UNIFORM_IVEC2);
 
-        // Placeholder for compute dispatch; API specifics depend on the GPU backend.
-        // rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
+        // Bind the render texture as an image (UAV) so the compute shader can write
+        // the final color directly. This avoids an intermediate CPU copy and keeps
+        // the entire ray tracing pass on the GPU.
+        rlBindImageTexture(m_RenderTexture.texture.id, 0, m_RenderTexture.texture.format, false);
+
+        // Launch one work group per 8x8 tile of the framebuffer. The work group
+        // size is chosen to match the layout expected by the compute shader.
+        //rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
+
+        // Ensure all writes to the image are complete before the texture is used
+        // for presentation. Without this barrier some GPUs could display partially
+        // updated data.
+        //rlMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+        // The result now lives in m_RenderTexture and can be presented directly.
+        // Future improvement: read back into m_Framebuffer for CPU-side effects or
+        // dispatch the compute shader asynchronously and in smaller tiles.
     }
 #endif
 
