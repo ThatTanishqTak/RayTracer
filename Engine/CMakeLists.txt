@@ -123,7 +123,10 @@ if(MSVC AND ENGINE_ENABLE_GPU)
     find_program(ENGINE_GLSLANG_VALIDATOR glslangValidator)
 
     set(ENGINE_SHADER_DIR ${CMAKE_SOURCE_DIR}/Sandbox/Assets/Shaders)
-    file(GLOB ENGINE_GLSL_SHADERS ${ENGINE_SHADER_DIR}/*.glsl)
+    # Shaders follow <Name>.<stage>.glsl naming (e.g., RayTrace.comp.glsl)
+    # so add an extra wildcard to capture the stage suffix.
+    # Future improvement: enumerate shaders explicitly to catch typos early.
+    file(GLOB ENGINE_GLSL_SHADERS ${ENGINE_SHADER_DIR}/*.*.glsl)
 
     foreach(ENGINE_SHADER ${ENGINE_GLSL_SHADERS})
         # Copy GLSL source to the output directory so it can be loaded at runtime.
@@ -137,12 +140,20 @@ if(MSVC AND ENGINE_ENABLE_GPU)
         # If glslangValidator is available, emit SPIR-V binaries for future APIs.
         if(ENGINE_GLSLANG_VALIDATOR)
             get_filename_component(ENGINE_SHADER_BASENAME ${ENGINE_SHADER} NAME_WE)
+            # Detect shader stage from filename (e.g., .vert.glsl, .frag.glsl, .comp.glsl).
+            # Default to compute stage if no stage tag is present.
+            string(REGEX MATCH "\.([^.]+)\.glsl$" _match "${ENGINE_SHADER_NAME}")
+            set(ENGINE_SHADER_STAGE "${CMAKE_MATCH_1}")
+            if(NOT ENGINE_SHADER_STAGE)
+                set(ENGINE_SHADER_STAGE "comp")
+            endif()
+
             set(ENGINE_SHADER_SPV ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders/${ENGINE_SHADER_BASENAME}.spv)
             add_custom_command(OUTPUT ${ENGINE_SHADER_SPV}
                 COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders
-                COMMAND ${ENGINE_GLSLANG_VALIDATOR} -V ${ENGINE_SHADER} -o ${ENGINE_SHADER_SPV}
+                COMMAND ${ENGINE_GLSLANG_VALIDATOR} -V -S ${ENGINE_SHADER_STAGE} ${ENGINE_SHADER} -o ${ENGINE_SHADER_SPV}
                 DEPENDS ${ENGINE_SHADER}
-                COMMENT "Compiling ${ENGINE_SHADER_BASENAME}.glsl to SPIR-V")
+                COMMENT "Compiling ${ENGINE_SHADER_BASENAME}.glsl (${ENGINE_SHADER_STAGE}) to SPIR-V")
             list(APPEND ENGINE_COMPILED_SHADERS ${ENGINE_SHADER_SPV})
         endif()
     endforeach()

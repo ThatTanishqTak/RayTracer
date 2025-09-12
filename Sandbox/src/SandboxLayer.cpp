@@ -62,6 +62,8 @@ void SandboxLayer::OnAttach()
     Engine::Sphere l_CenterSphere{ Vector3{ 0.0f, 0.0f, -1.0f }, 0.5f, l_CenterMaterial };       // Central Lambertian sphere
     Engine::Sphere l_LeftSphere{ Vector3{ -1.0f, 0.0f, -1.0f }, 0.5f, l_GlassMaterial };         // Left sphere with glass material
     Engine::Sphere l_RightSphere{ Vector3{ 1.0f, 0.0f, -1.0f }, 0.5f, l_MetalMaterial };         // Right sphere with metal material
+    // TODO: Expose light sphere properties through the editor for configurability.
+    Engine::Sphere l_LightSphere{ Vector3{ 0.0f, 1.5f, -1.0f }, 0.5f, l_LightMaterial }; // Emits light into the scene
 
     m_Scene.AddSphere(l_GroundSphere);
     m_Scene.AddSphere(l_CenterSphere);

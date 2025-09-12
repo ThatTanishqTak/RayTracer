@@ -115,9 +115,12 @@ namespace Engine
             else
             {
                 // Resolve the shader relative to the executable location.
+                // Shaders follow a <Name>.<stage>.glsl naming scheme
+                // (e.g., RayTrace.comp.glsl for a compute shader) so the stage
+                // is explicit and build scripts can glob for any stage.
                 // This avoids manual directory walking and prepares for a future
                 // resource manager to handle asset lookups in a central place.
-                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.glsl";
+                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.comp.glsl";
                 if (!std::filesystem::exists(l_ShaderPath))
                 {
                     // Fail early if the shader cannot be found to provide a clear message.
