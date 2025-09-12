@@ -161,6 +161,7 @@ namespace Engine
         unsigned int m_NodeBuffer{ 0 };      ///< GPU buffer containing flattened BVH nodes.
         unsigned int m_PrimitiveBuffer{ 0 }; ///< GPU buffer containing scene primitives.
         unsigned int m_MaterialBuffer{ 0 };  ///< GPU buffer containing material parameters.
+        unsigned int m_CameraBuffer{ 0 };    ///< Uniform buffer with camera position.
 #endif
     };
 }

@@ -145,11 +145,18 @@ namespace Engine
                     else
                     {
                         unsigned int l_ShaderId = rlCompileShader(l_ShaderCode, RL_COMPUTE_SHADER);
+
+                        // Retrieve the compiler log so that any diagnostics are surfaced
+                        // alongside our own messages. This makes shader issues easier to
+                        // understand for developers.
+                        // TODO: Forward the log to a dedicated diagnostics system for
+                        // richer analysis and presentation.
+                        const char* l_ShaderLog = rlGetShaderCompileErrors(l_ShaderId);
                         UnloadFileText(l_ShaderCode);
 
                         if (l_ShaderId == 0)
                         {
-                            RAY_CORE_ERROR("Failed to compile compute shader: {}", l_ShaderPathStr);
+                            RAY_CORE_ERROR("Failed to compile compute shader: {}\n{}", l_ShaderPathStr, l_ShaderLog ? l_ShaderLog : "");
 
                             l_Result = false;
                         }
@@ -219,6 +226,12 @@ namespace Engine
         {
             rlUnloadShaderBuffer(m_MaterialBuffer);
             m_MaterialBuffer = 0;
+        }
+
+        if (m_CameraBuffer != 0)
+        {
+            glDeleteBuffers(1, &m_CameraBuffer);
+            m_CameraBuffer = 0;
         }
 #endif
 
@@ -760,9 +773,29 @@ namespace Engine
         }
 
         // Upload basic per-frame parameters as uniform values.
-        Vector3 l_CameraPos = camera.position;
-        int l_Location = GetShaderLocation(m_GpuPipeline, "uCameraPos");
-        SetShaderValue(m_GpuPipeline, l_Location, &l_CameraPos, SHADER_UNIFORM_VEC3);
+        // Upload camera position via a dedicated uniform buffer (register b1).
+        // Future improvement: extend this buffer with additional camera parameters.
+        struct CameraBuffer
+        {
+            Vector3 m_CameraPos; // World-space camera position
+            float   m_Padding;   // 16-byte alignment
+        };
+
+        CameraBuffer l_CameraData{ camera.position, 0.0f };
+
+        if (m_CameraBuffer == 0)
+        {
+            glGenBuffers(1, &m_CameraBuffer);
+            glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBuffer);
+            glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraBuffer), &l_CameraData, GL_DYNAMIC_DRAW);
+        }
+        else
+        {
+            glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBuffer);
+            glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraBuffer), &l_CameraData);
+        }
+        glBindBufferBase(GL_UNIFORM_BUFFER, 1, m_CameraBuffer);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         struct TraceParams
         {

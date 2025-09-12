@@ -4,7 +4,12 @@ cbuffer uParams : register(b0)
     int m_SamplesPerPixel; // Jittered samples per pixel
 };
 
-float3 uCameraPos; // Camera origin passed from CPU
+// Camera parameters passed each frame. Maintains 16-byte alignment for HLSL.
+cbuffer uCamera : register(b1)
+{
+    float3 uCameraPos; // Camera origin supplied by the CPU
+    float m_Padding; // 16-byte alignment
+};
 
 // Material identifiers for shading choices.
 static const uint MATERIAL_LAMBERTIAN = 0;
