@@ -36,8 +36,10 @@ namespace Engine
      */
     struct RenderStep
     {
-        std::string m_Name;       ///< Human readable name of the step.
-        double m_ElapsedMs{ 0.0 };///< Time spent in this step in milliseconds.
+        std::string m_Name;             ///< Human readable name of the step.
+        double m_ElapsedMs{ 0.0 };      ///< Time spent on the CPU in milliseconds.
+        double m_GpuElapsedMs{ 0.0 };   ///< Time spent on the GPU in milliseconds (0 when not measured).
+        // TODO: Track IO time and per-tile statistics for deeper analysis.
     };
 
     class Renderer
@@ -161,7 +163,7 @@ namespace Engine
         /**\brief Upload per-frame parameters and dispatch the GPU compute shader.
          * Future improvement: move parameter packing into a dedicated constant buffer structure.
          */
-        void DispatchGPU(const Scene& scene, const Camera& camera);
+        double DispatchGPU(const Scene& scene, const Camera& camera);
 
         Shader m_GpuPipeline{ 0 }; ///< Compute shader pipeline used during RenderMode::RayTraceGPU.
         unsigned int m_NodeBuffer{ 0 };      ///< GPU buffer containing flattened BVH nodes.

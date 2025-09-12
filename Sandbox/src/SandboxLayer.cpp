@@ -177,27 +177,38 @@ void SandboxLayer::OnImGuiRender()
     ImGui::Text("Render Time: %.2f ms", m_RenderTime);
     ImGui::Text("Tiles: %d/%d", l_Completed, l_TotalTiles);
 
-    // Two-column table showing each render stage and the CPU time spent.
-    if (ImGui::BeginTable("Steps", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+    // Three-column table showing stage name, CPU time, and GPU time when available.
+    if (ImGui::BeginTable("Steps", 3, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
     {
         // Column 0: Name of the render stage
         ImGui::TableSetupColumn("Stage", ImGuiTableColumnFlags_WidthStretch);
         // Column 1: Time spent on the CPU for the stage
         ImGui::TableSetupColumn("CPU Time (ms)", ImGuiTableColumnFlags_WidthStretch);
-        // Future: GPU/IO timing columns can be added here when available
+        // Column 2: Time spent on the GPU for the stage
+        ImGui::TableSetupColumn("GPU Time (ms)", ImGuiTableColumnFlags_WidthStretch);
+        // TODO: add IO time or per-tile metrics when profiling expands
         ImGui::TableHeadersRow();
 
         for (const Engine::RenderStep& it_Step : l_Steps)
         {
-            // Each row lists the name of the step and its elapsed CPU time.
+            // Each row lists the name of the step and its elapsed CPU/GPU times.
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             ImGui::Text("%s", it_Step.m_Name.c_str());
             ImGui::TableNextColumn();
             ImGui::Text("%.2f", it_Step.m_ElapsedMs);
+            ImGui::TableNextColumn();
+            if (it_Step.m_GpuElapsedMs > 0.0)
+            {
+                ImGui::Text("%.2f", it_Step.m_GpuElapsedMs);
+            }
+            else
+            {
+                ImGui::Text("–");
+            }
         }
 
-        // TODO: Display GPU/IO steps once available.
+        // Future improvement: include IO time per asset and per-tile breakdowns.
         ImGui::EndTable();
     }
     ImGui::End();

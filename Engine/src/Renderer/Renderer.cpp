@@ -520,11 +520,11 @@ namespace Engine
             double l_SceneMs = std::chrono::duration<double, std::milli>(l_SceneEnd - l_SceneStart).count();
             {
                 std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
-                m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs });
+                m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs, 0.0 });
             }
 
             std::chrono::high_resolution_clock::time_point l_DispatchStart = l_SceneEnd;
-            DispatchGPU(scene, camera);
+            double l_GpuDispatchMs = DispatchGPU(scene, camera);
             m_GpuDispatched = true; // Mark that the GPU path executed
             // Insert a fence so the CPU can later query when the GPU work is finished.
             m_GpuFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
@@ -533,7 +533,7 @@ namespace Engine
             double l_DispatchMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - l_DispatchStart).count();
             {
                 std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
-                m_Steps.push_back(RenderStep{ "GPU Dispatch", l_DispatchMs });
+                m_Steps.push_back(RenderStep{ "GPU Dispatch", l_DispatchMs, l_GpuDispatchMs });
             }
             m_RenderDurationMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - m_RenderStart).count();
 #endif
@@ -571,7 +571,7 @@ namespace Engine
         // Store the scene setup time so the UI can present it later.
         {
             std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
-            m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs });
+            m_Steps.push_back(RenderStep{ "Scene Setup", l_SceneMs, 0.0 });
         }
 
         // Record start time for tile processing stage.
@@ -710,12 +710,12 @@ namespace Engine
     }
 
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
-    void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
+    double Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
     {
         if (m_GpuPipeline.id == 0)
         {
             // Future improvement: lazily create the compute pipeline here.
-            return;
+            return 0.0;
         }
 
         // Upload flattened BVH nodes and primitives to shader storage buffers.
@@ -821,6 +821,12 @@ namespace Engine
         // the entire ray tracing pass on the GPU.
         rlBindImageTexture(m_RenderTexture.texture.id, 0, m_RenderTexture.texture.format, false);
 
+        // Measure GPU execution time of the compute dispatch.
+        unsigned int l_QueryId = 0;
+        glGenQueries(1, &l_QueryId);
+        glBeginQuery(GL_TIME_ELAPSED, l_QueryId);
+
+
         // Launch one work group per 8x8 tile of the framebuffer. The work group
         // size is chosen to match the layout expected by the compute shader.
         rlComputeShaderDispatch(m_FrameWidth / 8, m_FrameHeight / 8, 1); // Requires OpenGL 4.3+; TODO: adapt work-group sizes
@@ -833,9 +839,17 @@ namespace Engine
         // Future improvement: wrap this in an engine utility to centralize GPU
         // synchronization.
 
+        glEndQuery(GL_TIME_ELAPSED);
+        unsigned long long l_TimeNs = 0;
+        glGetQueryObjectui64v(l_QueryId, GL_QUERY_RESULT, &l_TimeNs);
+        glDeleteQueries(1, &l_QueryId);
+        double l_GpuMs = static_cast<double>(l_TimeNs) / 1000000.0;
+
         // The result now lives in m_RenderTexture and can be presented directly.
         // Future improvement: read back into m_Framebuffer for CPU-side effects or
         // dispatch the compute shader asynchronously and in smaller tiles.
+
+        return l_GpuMs;
     }
 #endif
 
@@ -958,7 +972,7 @@ namespace Engine
             // finish.
             {
                 std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
-                m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs });
+                m_Steps.push_back(RenderStep{ "Tile Processing", l_ProcessMs, 0.0 });
             }
 
             // Compute the overall duration including scene setup for UI queries.
