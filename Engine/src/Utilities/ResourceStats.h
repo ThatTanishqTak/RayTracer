@@ -31,6 +31,12 @@ namespace Engine
              */
             static float GetCPUUsage();
 
+            /**
+             * \brief Query dedicated GPU memory currently in use.
+             * \return Bytes of dedicated GPU memory in use or 0 if unsupported.
+             */
+            static size_t GetGPUMemoryUsage();
+
         private:
             // Store previous system times to calculate CPU usage deltas.
             static ULONGLONG s_LastIdleTime;    ///< Last observed idle time.

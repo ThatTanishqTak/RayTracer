@@ -144,8 +144,16 @@ void SandboxLayer::OnImGuiRender()
     float l_MemoryMB = static_cast<float>(l_MemoryBytes) / (1024.0f * 1024.0f);
     float l_CPUUsage = Engine::Utilities::ResourceStats::GetCPUUsage();
 
+#ifdef ENGINE_ENABLE_GPU
+    size_t l_GPUMemoryBytes = Engine::Utilities::ResourceStats::GetGPUMemoryUsage();
+    float l_GPUMemoryMB = static_cast<float>(l_GPUMemoryBytes) / (1024.0f * 1024.0f);
+#endif
+
     ImGui::Text("Memory: %.2f MB", l_MemoryMB);
     ImGui::Text("CPU: %.2f %%", l_CPUUsage);
+#ifdef ENGINE_ENABLE_GPU
+    ImGui::Text("GPU Memory: %.2f MB", l_GPUMemoryMB);
+#endif
     ImGui::End();
 
     // Present detailed timing for each stage of the render inside its own window.

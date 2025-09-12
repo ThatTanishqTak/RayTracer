@@ -2,6 +2,11 @@
 
 #include <psapi.h>
 
+#ifdef ENGINE_ENABLE_GPU
+#include <GL/glew.h>
+#include <string_view>
+#endif
+
 namespace Engine
 {
     namespace Utilities
@@ -56,6 +61,57 @@ namespace Engine
 
             // Percentage of time spent executing non-idle threads.
             return static_cast<float>(l_Total - l_IdleDiff) * 100.0f / static_cast<float>(l_Total);
+        }
+
+        size_t ResourceStats::GetGPUMemoryUsage()
+        {
+#ifdef ENGINE_ENABLE_GPU
+            // Cache extension checks so expensive queries happen only once.
+            static bool s_Checked = false;
+            static bool s_HasNVX = false; // NVIDIA specific extension presence
+            static bool s_HasATI = false; // AMD specific extension presence
+
+            if (!s_Checked)
+            {
+                const GLubyte* l_ExtensionsBytes = glGetString(GL_EXTENSIONS);
+                if (l_ExtensionsBytes)
+                {
+                    std::string_view l_Extensions = reinterpret_cast<const char*>(l_ExtensionsBytes);
+                    s_HasNVX = l_Extensions.find("GL_NVX_gpu_memory_info") != std::string_view::npos;
+                    s_HasATI = l_Extensions.find("GL_ATI_meminfo") != std::string_view::npos;
+                }
+                s_Checked = true;
+            }
+
+            if (s_HasNVX)
+            {
+                // NVIDIA path: reports dedicated and available memory in kilobytes.
+                GLint l_DedicatedKB = 0;
+                GLint l_AvailableKB = 0;
+                glGetIntegerv(GL_GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &l_DedicatedKB);
+                glGetIntegerv(GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX, &l_AvailableKB);
+                GLint l_UsedKB = l_DedicatedKB - l_AvailableKB;
+                return static_cast<size_t>(l_UsedKB) * 1024; // Convert to bytes
+            }
+
+            if (s_HasATI)
+            {
+                // AMD path: extension exposes only free memory in kilobytes.
+                // Cache total on first call and compute usage as difference.
+                static GLint s_TotalMemoryKB = 0;
+                GLint l_MemoryKB[4] = {};
+                glGetIntegerv(GL_TEXTURE_FREE_MEMORY_ATI, l_MemoryKB);
+                if (s_TotalMemoryKB == 0)
+                {
+                    s_TotalMemoryKB = l_MemoryKB[0];
+                    return 0; // First call can't determine usage yet
+                }
+                GLint l_UsedKB = s_TotalMemoryKB - l_MemoryKB[0];
+                return static_cast<size_t>(l_UsedKB) * 1024; // Convert to bytes
+            }
+#endif
+            // Unsupported GPU query or no GPU build.
+            return 0;
         }
     }
 }
