@@ -82,14 +82,15 @@ HitRecord CreateEmptyHitRecord()
     // All fields are explicitly set to zero or equivalent defaults so the
     // caller starts from a known state.
     return HitRecord(
-        vec3(0.0f),           // m_Point
-        vec3(0.0f),           // m_Normal
-        0.0f,                 // m_Target
-        false,                // m_FrontFace
-        0u,                   // m_MaterialType
-        vec3(0.0f),           // m_Albedo
-        0.0f,                 // m_Fuzz
-        0.0f);                // m_RefIdx
+        vec3(0.0f),           // m_Point - intersection point
+        vec3(0.0f),           // m_Normal - surface normal at hit
+        0.0f,                 // m_Target - distance along the ray
+        false,                // m_FrontFace - front-face test
+        0u,                   // m_MaterialType - material identifier
+        vec3(0.0f),           // m_Albedo - base color
+        0.0f,                 // m_Fuzz - metal fuzziness
+        vec3(0.0f),           // m_Emission - emissive radiance
+        0.0f);                // m_RefIdx - index of refraction
 }
 
 // Structured buffers become shader storage buffers in GLSL.
