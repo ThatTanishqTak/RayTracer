@@ -146,17 +146,21 @@ namespace Engine
                     {
                         unsigned int l_ShaderId = rlCompileShader(l_ShaderCode, RL_COMPUTE_SHADER);
 
-                        // Retrieve the compiler log so that any diagnostics are surfaced
-                        // alongside our own messages. This makes shader issues easier to
-                        // understand for developers.
+                        // Retrieve the compiler log using a fallback that queries
+                        // OpenGL directly. rlgl currently lacks an equivalent helper, so
+                        // this approach keeps developers informed about compilation
+                        // diagnostics.
                         // TODO: Forward the log to a dedicated diagnostics system for
-                        // richer analysis and presentation.
-                        const char* l_ShaderLog = rlGetShaderCompileErrors(l_ShaderId);
+                        // richer analysis and presentation. Future versions may switch to
+                        // rlgl once it exposes a similar function.
+                        const std::string l_ShaderLog = GetShaderLog(l_ShaderId);
                         UnloadFileText(l_ShaderCode);
 
                         if (l_ShaderId == 0)
                         {
-                            RAY_CORE_ERROR("Failed to compile compute shader: {}\n{}", l_ShaderPathStr, l_ShaderLog ? l_ShaderLog : "");
+                            // Report compilation failure alongside the captured log for
+                            // easier diagnosis.
+                            RAY_CORE_ERROR("Failed to compile compute shader: {}\n{}", l_ShaderPathStr, l_ShaderLog);
 
                             l_Result = false;
                         }
@@ -814,18 +818,41 @@ namespace Engine
 
         // Launch one work group per 8x8 tile of the framebuffer. The work group
         // size is chosen to match the layout expected by the compute shader.
-        //rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
+        rlComputeShaderDispatch(m_FrameWidth / 8, m_FrameHeight / 8, 1); // Requires OpenGL 4.3+; TODO: adapt work-group sizes
 
         // Ensure all writes to the image are complete before the texture is used
         // for presentation. Without this barrier some GPUs could display partially
         // updated data.
-        //rlMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        // Direct OpenGL call used because some raylib builds omit rlMemoryBarrier.
+        // Future improvement: wrap this in an engine utility to centralize GPU
+        // synchronization.
 
         // The result now lives in m_RenderTexture and can be presented directly.
         // Future improvement: read back into m_Framebuffer for CPU-side effects or
         // dispatch the compute shader asynchronously and in smaller tiles.
     }
 #endif
+
+    std::string Renderer::GetShaderLog(unsigned int shaderId)
+    {
+        // Fallback: query OpenGL directly for shader compilation diagnostics.
+        // rlgl does not currently expose a wrapper, but future versions may
+        // offer an equivalent function to remove this dependency.
+        std::string l_Log{};
+        GLint l_Length = 0;
+        glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &l_Length);
+
+        if (l_Length > 1)
+        {
+            std::string l_Buffer(static_cast<size_t>(l_Length), '\0');
+            GLsizei l_Written = 0;
+            glGetShaderInfoLog(shaderId, l_Length, &l_Written, l_Buffer.data());
+            l_Log.assign(l_Buffer.c_str(), static_cast<size_t>(l_Written));
+        }
+
+        return l_Log;
+    }
 
     void Renderer::WorkerThread(int threadID)
     {

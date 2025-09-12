@@ -9,10 +9,10 @@
 #ifdef ENGINE_ENABLE_GPU
 #include <rlgl.h> ///rlgl provides low-level access to OpenGL and exposes compute helpers.
     // Determine if the bound raylib build includes compute shader support. The
-    // functions rlDispatchCompute and rlMemoryBarrier are only exported when
-    // raylib is compiled with GRAPHICS_API_OPENGL_43 and the rlgl compute
-    // extensions enabled. This check prevents build failures on configurations
-    // lacking those symbols and allows a graceful CPU fallback.
+    // function rlDispatchCompute is only exported when raylib is compiled with
+    // GRAPHICS_API_OPENGL_43 and the rlgl compute extensions enabled. This check
+    // prevents build failures on configurations lacking those symbols and
+    // allows a graceful CPU fallback.
 #if defined(GRAPHICS_API_OPENGL_43) && defined(RL_COMPUTE_SHADER)
 #define ENGINE_GPU_COMPUTE_AVAILABLE
 #endif
@@ -150,6 +150,12 @@ namespace Engine
         
         /**\brief Entry point for worker threads processing tiles.*/
         void WorkerThread(int threadID);
+
+        /**\brief Fallback helper to query shader compilation logs.
+         * rlgl currently lacks a compile-log function; this uses OpenGL directly.
+         * Future improvement: replace with an rlgl equivalent when available.
+         */
+        static std::string GetShaderLog(unsigned int shaderId);
 
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
         /**\brief Upload per-frame parameters and dispatch the GPU compute shader.
