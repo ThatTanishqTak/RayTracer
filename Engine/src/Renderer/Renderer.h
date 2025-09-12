@@ -7,7 +7,15 @@
 #include <GL/glew.h>
 #include <raylib.h>
 #ifdef ENGINE_ENABLE_GPU
-#include <rlgl.h>
+#include <rlgl.h> ///rlgl provides low-level access to OpenGL and exposes compute helpers.
+    // Determine if the bound raylib build includes compute shader support. The
+    // functions rlDispatchCompute and rlMemoryBarrier are only exported when
+    // raylib is compiled with GRAPHICS_API_OPENGL_43 and the rlgl compute
+    // extensions enabled. This check prevents build failures on configurations
+    // lacking those symbols and allows a graceful CPU fallback.
+#if defined(GRAPHICS_API_OPENGL_43) && defined(RL_COMPUTE_SHADER)
+#define ENGINE_GPU_COMPUTE_AVAILABLE
+#endif
 #endif
 
 // Future improvement: abstract this header to support Vulkan or DirectX backends.
@@ -38,7 +46,7 @@ namespace Engine
         /**\brief Rendering techniques supported by the engine.
          * Raster: traditional rasterization using the GPU graphics pipeline.
          * RayTrace: CPU based path for ray-traced rendering.
-         * RayTraceGPU: GPU-accelerated tracing; requires ENGINE_ENABLE_GPU.
+         * RayTraceGPU: GPU-accelerated tracing; requires ENGINE_GPU_COMPUTE_AVAILABLE.
          * Future improvement: expand with hybrid modes to leverage modern hardwar
          */
         enum class RenderMode
@@ -122,7 +130,7 @@ namespace Engine
         int m_TotalTiles{ 0 };                           ///Total amount of tiles in the frame.
         std::atomic<int> m_TilesCompleted{ 0 };          ///Tiles completed by worker threads.
         bool m_GpuDispatched{ false };                   ///Tracks whether a GPU dispatch occurred to distinguish unstarted renders.
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
         GLsync m_GpuFence{ nullptr };                    ///Fence used to synchronize CPU with GPU completion. Requires OpenGL 3.2+.
         bool m_GpuCompleted{ false };                    ///True once the GPU has finished writing to the render texture.
         bool m_GpuCompletionNotified{ false };           ///Ensures the final frame is blitted before m_IsRendering flips.
@@ -143,7 +151,7 @@ namespace Engine
         /**\brief Entry point for worker threads processing tiles.*/
         void WorkerThread(int threadID);
 
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
         /**\brief Upload per-frame parameters and dispatch the GPU compute shader.
          * Future improvement: move parameter packing into a dedicated constant buffer structure.
          */

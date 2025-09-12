@@ -12,7 +12,7 @@
 #include <raylib.h>
 #include <raymath.h>
 #include <rlImGui.h>
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
 #include <rlgl.h>
 #endif
 
@@ -54,10 +54,10 @@ namespace Engine
             }
         }
 
-#ifndef ENGINE_ENABLE_GPU
-        // Ensure CPU path is active when the engine is built without GPU support.
+#if !defined(ENGINE_GPU_COMPUTE_AVAILABLE)
+        // Ensure CPU path is active when the engine or raylib lacks compute support.
         SetRenderMode(RenderMode::RayTrace);
-        std::string l_Warning = "ENGINE_ENABLE_GPU not defined; defaulting to CPU ray tracing";
+        std::string l_Warning = "GPU compute path unavailable; defaulting to CPU ray tracing";
         RAY_CORE_ERROR(l_Warning);
 #endif
 
@@ -79,7 +79,7 @@ namespace Engine
             l_Result = ResizeFrameTexture(width, height);
         }
 
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
         // Load the compute shader used for GPU ray tracing.
         if (l_Result)
         {
@@ -176,7 +176,7 @@ namespace Engine
             UnloadRenderTexture(m_RenderTexture);
         }
 
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
         // Release GPU compute resources when previously allocated.
         if (m_GpuPipeline.id != 0)
         {
@@ -402,7 +402,7 @@ namespace Engine
             m_RenderMode = mode;
             break;
         case RenderMode::RayTraceGPU:
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
             m_RenderMode = mode;
 #else
             // Fallback to CPU tracing if GPU support is not compiled in.
@@ -420,7 +420,7 @@ namespace Engine
 
     Renderer::RenderMode Renderer::GetRenderMode() const
     {
-        // Report current rendering technique. GPU mode requires ENGINE_ENABLE_GPU at
+        // Report current rendering technique. GPU mode requires ENGINE_GPU_COMPUTE_AVAILABLE at
         // build time.
         return m_RenderMode;
     }
@@ -450,7 +450,7 @@ namespace Engine
         m_IsRendering = true;
         m_GpuDispatched = false; // Reset GPU dispatch flag for this render pass
 
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
         if (m_GpuFence != nullptr)
         {
             // Release leftover fence from a previous run.
@@ -476,7 +476,7 @@ namespace Engine
         // Handle GPU dispatch separately to bypass worker threads and atomics.
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
             std::chrono::high_resolution_clock::time_point l_SceneEnd = std::chrono::high_resolution_clock::now();
             double l_SceneMs = std::chrono::duration<double, std::milli>(l_SceneEnd - l_SceneStart).count();
             {
@@ -549,7 +549,7 @@ namespace Engine
 
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
             if (m_GpuFence != nullptr)
             {
                 // Wait for any outstanding GPU work. OpenGL lacks explicit cancellation,
@@ -605,7 +605,7 @@ namespace Engine
     {
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
             if (m_GpuFence != nullptr && !m_GpuCompleted)
             {
                 // Poll the fence with zero timeout so the CPU never stalls.
@@ -660,7 +660,7 @@ namespace Engine
         }
     }
 
-#ifdef ENGINE_ENABLE_GPU
+#ifdef ENGINE_GPU_COMPUTE_AVAILABLE
     void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
     {
         if (m_GpuPipeline.id == 0)
