@@ -45,10 +45,10 @@ namespace Engine
         // Load OpenGL function pointers. Must occur after the context is created.
         if (l_Result)
         {
-            GLenum l_GlewErr = glewInit();
-            if (l_GlewErr != GLEW_OK)
+            GLenum l_GlewError = glewInit();
+            if (l_GlewError != GLEW_OK)
             {
-                RAY_CORE_ERROR("Failed to initialize GLEW: {}", reinterpret_cast<const char*>(glewGetErrorString(l_GlewErr)));
+                RAY_CORE_ERROR("Failed to initialize GLEW: {}", reinterpret_cast<const char*>(glewGetErrorString(l_GlewError)));
 
                 l_Result = false;
             }
@@ -57,8 +57,17 @@ namespace Engine
 #if !defined(ENGINE_GPU_COMPUTE_AVAILABLE)
         // Ensure CPU path is active when the engine or raylib lacks compute support.
         SetRenderMode(RenderMode::RayTrace);
-        std::string l_Warning = "GPU compute path unavailable; defaulting to CPU ray tracing";
-        RAY_CORE_ERROR(l_Warning);
+
+        // Query GPU information to aid users in diagnosing missing features.
+        const GLubyte* l_VendorBytes = glGetString(GL_VENDOR);
+        const GLubyte* l_RendererBytes = glGetString(GL_RENDERER);
+        const GLubyte* l_DriverBytes = glGetString(GL_VERSION);
+        const char* l_Vendor = l_VendorBytes ? reinterpret_cast<const char*>(l_VendorBytes) : "Unknown";
+        const char* l_Renderer = l_RendererBytes ? reinterpret_cast<const char*>(l_RendererBytes) : "Unknown";
+        const char* l_Driver = l_DriverBytes ? reinterpret_cast<const char*>(l_DriverBytes) : "Unknown";
+
+        RAY_CORE_ERROR("{} | GPU Vendor: {} | GPU Renderer: {} | Driver Version: {}. Consider updating GPU drivers or enabling compute support in configuration.",
+            "GPU compute path unavailable; defaulting to CPU ray tracing", l_Vendor, l_Renderer, l_Driver);
 #endif
 
         // Initialize ImGui for raylib and store the result.
@@ -89,7 +98,16 @@ namespace Engine
             // tracing.
             if (rlGetVersion() < RL_OPENGL_43)
             {
-                RAY_CORE_WARNING("Compute shaders unsupported; defaulting to CPU ray tracing");
+                // Gather GPU details to help users diagnose unsupported compute capabilities.
+                const GLubyte* l_VendorBytes = glGetString(GL_VENDOR);
+                const GLubyte* l_RendererBytes = glGetString(GL_RENDERER);
+                const GLubyte* l_DriverBytes = glGetString(GL_VERSION);
+                const char* l_Vendor = l_VendorBytes ? reinterpret_cast<const char*>(l_VendorBytes) : "Unknown";
+                const char* l_Renderer = l_RendererBytes ? reinterpret_cast<const char*>(l_RendererBytes) : "Unknown";
+                const char* l_Driver = l_DriverBytes ? reinterpret_cast<const char*>(l_DriverBytes) : "Unknown";
+
+                RAY_CORE_WARNING("Compute shaders unsupported; defaulting to CPU ray tracing | GPU Vendor: {} | GPU Renderer: {} | Driver Version: {}. Consider updating GPU drivers or verifying hardware support."
+                    ,l_Vendor, l_Renderer, l_Driver);
 
                 SetRenderMode(RenderMode::RayTrace);
             }
@@ -763,12 +781,12 @@ namespace Engine
 
         // Launch one work group per 8x8 tile of the framebuffer. The work group
         // size is chosen to match the layout expected by the compute shader.
-        rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
+        //rlDispatchCompute(m_FrameWidth / 8, m_FrameHeight / 8, 1);
 
         // Ensure all writes to the image are complete before the texture is used
         // for presentation. Without this barrier some GPUs could display partially
         // updated data.
-        rlMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        //rlMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
         // The result now lives in m_RenderTexture and can be presented directly.
         // Future improvement: read back into m_Framebuffer for CPU-side effects or
