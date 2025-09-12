@@ -79,18 +79,18 @@ struct HitRecord
 // Helper used to create a zero-initialized hit record without relying on casts.
 HitRecord CreateEmptyHitRecord()
 {
-    // All fields are explicitly set to zero or equivalent defaults so the
-    // caller starts from a known state.
-    return HitRecord(
-        vec3(0.0f),           // m_Point - intersection point
-        vec3(0.0f),           // m_Normal - surface normal at hit
-        0.0f,                 // m_Target - distance along the ray
-        false,                // m_FrontFace - front-face test
-        0u,                   // m_MaterialType - material identifier
-        vec3(0.0f),           // m_Albedo - base color
-        0.0f,                 // m_Fuzz - metal fuzziness
-        vec3(0.0f),           // m_Emission - emissive radiance
-        0.0f);                // m_RefIdx - index of refraction
+    // All fields are explicitly set so the caller starts from a known state.
+    HitRecord l_Record; // Local hit record with defined defaults
+    l_Record.m_Point = vec3(0.0f);          // Intersection point
+    l_Record.m_Normal = vec3(0.0f);         // Surface normal at hit
+    l_Record.m_Target = 0.0f;               // Distance along the ray
+    l_Record.m_FrontFace = false;           // Front-face test
+    l_Record.m_MaterialType = 0u;           // Material identifier
+    l_Record.m_Albedo = vec3(0.0f);         // Base color
+    l_Record.m_Fuzz = 0.0f;                 // Metal fuzziness
+    l_Record.m_Emission = vec3(0.0f);       // Emissive radiance
+    l_Record.m_RefIdx = 0.0f;               // Index of refraction
+    return l_Record;
 }
 
 // Structured buffers become shader storage buffers in GLSL.
