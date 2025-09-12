@@ -1,25 +1,33 @@
-cbuffer uParams : register(b0)
+#version 450
+// Converted from HLSL to GLSL for OpenGL/Vulkan style compute pipelines.
+// Resource bindings mirror original HLSL register assignments for clarity.
+// Future enhancement: add cross-compilation to support SPIR-V or DXC paths.
+// TODO: Implement shader cross-compilation for multi-API support.
+
+// Converted from HLSL constant buffers to GLSL uniform blocks.
+// Binding points mirror the original register indices (b0 and b1).
+layout(std140, binding = 0) uniform uParams
 {
-    int m_MaxDepth; // Maximum recursion depth
-    int m_SamplesPerPixel; // Jittered samples per pixel
+int m_MaxDepth; // Maximum recursion depth
+int m_SamplesPerPixel; // Jittered samples per pixel
 };
 
-// Camera parameters passed each frame. Maintains 16-byte alignment for HLSL.
-cbuffer uCamera : register(b1)
+// Camera parameters passed each frame. Maintains 16-byte alignment for std140.
+layout(std140, binding = 1) uniform uCamera
 {
-    float3 uCameraPos; // Camera origin supplied by the CPU
-    float m_Padding; // 16-byte alignment
+vec3 uCameraPos; // Camera origin supplied by the CPU
+float m_Padding; // Padding for std140 alignment
 };
 
 // Material identifiers for shading choices.
-static const uint MATERIAL_LAMBERTIAN = 0;
-static const uint MATERIAL_METAL = 1;
-static const uint MATERIAL_DIELECTRIC = 2;
+const uint MATERIAL_LAMBERTIAN = 0;
+const uint MATERIAL_METAL = 1;
+const uint MATERIAL_DIELECTRIC = 2;
 
 // Plain-old-data material used by the GPU.
 struct MaterialGPU
 {
-    float3 m_Albedo; // Base color
+    vec3 m_Albedo; // Base color
     float m_Fuzz; // Metal fuzziness
     float m_RefIdx; // Index of refraction
     uint m_Type; // Material type selector
@@ -28,17 +36,17 @@ struct MaterialGPU
 // GPU representation of a sphere primitive.
 struct Sphere
 {
-    float3 m_Center; // Sphere center
+    vec3 m_Center; // Sphere center
     float m_Radius; // Sphere radius
     uint m_MaterialIndex; // Index into material buffer
-    float3 m_Padding; // Alignment padding
+    vec3 m_Padding; // Alignment padding
 };
 
 // Axis aligned bounding box stored in the BVH nodes.
 struct BVHFlatNode
 {
-    float3 m_BoundsMin; // Minimum corner of the node's bounds
-    float3 m_BoundsMax; // Maximum corner of the node's bounds
+    vec3 m_BoundsMin; // Minimum corner of the node's bounds
+    vec3 m_BoundsMax; // Maximum corner of the node's bounds
     uint m_Left; // Index of the left child or primitive
     uint m_Right; // Index of the right child when not a leaf
     uint m_Primitive; // Primitive index for leaves
@@ -47,26 +55,44 @@ struct BVHFlatNode
 
 struct Ray
 {
-    float3 m_Origin; // Ray origin in world space
-    float3 m_Direction; // Normalized ray direction
+    vec3 m_Origin; // Ray origin in world space
+    vec3 m_Direction; // Normalized ray direction
 };
 
 struct HitRecord
 {
-    float3 m_Point; // Point of intersection
-    float3 m_Normal; // Surface normal at the hit point
+    vec3 m_Point; // Point of intersection
+    vec3 m_Normal; // Surface normal at the hit point
     float m_Target; // Distance along the ray
     bool m_FrontFace; // True when hitting the front face
     uint m_MaterialType; // Material selector
-    float3 m_Albedo; // Surface color for shading
+    vec3 m_Albedo; // Surface color for shading
     float m_Fuzz; // Metal fuzziness
     float m_RefIdx; // Refractive index
 };
 
-StructuredBuffer<BVHFlatNode> g_Nodes : register(t0); // Flattened BVH nodes
-StructuredBuffer<Sphere> g_Spheres : register(t1); // Primitive data
-StructuredBuffer<MaterialGPU> g_Materials : register(t2); // Material parameters
-RWTexture2D<float4> g_Output : register(u0); // Render target
+// Structured buffers become shader storage buffers in GLSL.
+layout(std430, binding = 0)
+buffer NodesBuffer
+{
+    BVHFlatNodeg_Nodes[]; // Flattened BVH nodes
+};
+
+layout(std430, binding = 1)
+buffer SpheresBuffer
+{
+    Sphereg_Spheres[]; // Primitive data
+};
+
+layout(std430, binding = 2)
+buffer MaterialsBuffer
+{
+    MaterialGPUg_Materials[]; // Material parameters
+};
+
+// UAV in HLSL translates to an image in GLSL. Uses rgba32f to match float4.
+layout(binding = 0, rgba32f)
+uniform image2D g_Output; // Render target
 
 // --------------------------------------------------------------------------------------
 // Random number generation utilities
@@ -84,20 +110,20 @@ float RandomFloat(inout uint l_State)
     return l_State / 4294967296.0f;
 }
 
-uint SeedFromPixel(uint2 l_Pixel)
+uint SeedFromPixel(uvec2 l_Pixel)
 {
     uint l_State = l_Pixel.x * 1973u + l_Pixel.y * 9277u + 8917u;
     return PCGHash(l_State);
 }
 
 
-float3 RandomInUnitSphere(inout uint l_State)
+vec3 RandomInUnitSphere(inout uint l_State)
 {
     // Rejection sampling inside the unit sphere
-    float3 l_P;
+    vec3 l_P;
     do
     {
-        l_P = float3(RandomFloat(l_State) * 2.0f - 1.0f,
+        l_P = vec3(RandomFloat(l_State) * 2.0f - 1.0f,
                      RandomFloat(l_State) * 2.0f - 1.0f,
                      RandomFloat(l_State) * 2.0f - 1.0f);
     }
@@ -106,7 +132,7 @@ float3 RandomInUnitSphere(inout uint l_State)
     return l_P;
 }
 
-float3 RandomUnitVector(inout uint l_State)
+vec3 RandomUnitVector(inout uint l_State)
 {
     return normalize(RandomInUnitSphere(l_State));
 }
@@ -122,7 +148,7 @@ float Reflectance(float l_Cosine, float l_RefIdx)
 // --------------------------------------------------------------------------------------
 // Intersection helpers
 // --------------------------------------------------------------------------------------
-bool HitAABB(float3 l_Min, float3 l_Max, Ray l_Ray, float l_tMin, float l_tMax)
+bool HitAABB(vec3 l_Min, vec3 l_Max, Ray l_Ray, float l_tMin, float l_tMax)
 {
     // Slab test across each axis
     for (int it_Axis = 0; it_Axis < 3; ++it_Axis)
@@ -151,7 +177,7 @@ bool HitSphere(Ray l_Ray, Sphere l_Sphere, float l_tMin, float l_tMax, out HitRe
 {
     l_Record = (HitRecord) 0;
 
-    float3 l_OC = l_Ray.m_Origin - l_Sphere.m_Center;
+    vec3 l_OC = l_Ray.m_Origin - l_Sphere.m_Center;
     float l_A = dot(l_Ray.m_Direction, l_Ray.m_Direction);
     float l_HalfB = dot(l_OC, l_Ray.m_Direction);
     float l_C = dot(l_OC, l_OC) - l_Sphere.m_Radius * l_Sphere.m_Radius;
@@ -174,7 +200,7 @@ bool HitSphere(Ray l_Ray, Sphere l_Sphere, float l_tMin, float l_tMax, out HitRe
 
     l_Record.m_Target = l_Root;
     l_Record.m_Point = l_Ray.m_Origin + l_Root * l_Ray.m_Direction;
-    float3 l_OutwardNormal = (l_Record.m_Point - l_Sphere.m_Center) / l_Sphere.m_Radius;
+    vec3 l_OutwardNormal = (l_Record.m_Point - l_Sphere.m_Center) / l_Sphere.m_Radius;
     l_Record.m_FrontFace = dot(l_Ray.m_Direction, l_OutwardNormal) < 0.0f;
     l_Record.m_Normal = l_Record.m_FrontFace ? l_OutwardNormal : -l_OutwardNormal;
     // Fetch material properties using the referenced index.
@@ -231,11 +257,11 @@ bool HitWorld(Ray l_Ray, out HitRecord l_Record)
 }
 
 // Compute scattering based on material properties.
-bool Scatter(Ray l_Ray, HitRecord l_Record, inout uint l_State, out float3 l_Attenuation, out Ray l_Scattered)
+bool Scatter(Ray l_Ray, HitRecord l_Record, inout uint l_State, out vec3 l_Attenuation, out Ray l_Scattered)
 {
     if (l_Record.m_MaterialType == MATERIAL_LAMBERTIAN)
     {
-        float3 l_ScatterDir = l_Record.m_Normal + RandomUnitVector(l_State);
+        vec3 l_ScatterDir = l_Record.m_Normal + RandomUnitVector(l_State);
         if (dot(l_ScatterDir, l_ScatterDir) < 1e-8f)
         {
             l_ScatterDir = l_Record.m_Normal; // Handle degenerate scatter direction
@@ -247,8 +273,8 @@ bool Scatter(Ray l_Ray, HitRecord l_Record, inout uint l_State, out float3 l_Att
     }
     else if (l_Record.m_MaterialType == MATERIAL_METAL)
     {
-        float3 l_Reflected = reflect(normalize(l_Ray.m_Direction), l_Record.m_Normal);
-        float3 l_ScatterDir = l_Reflected + l_Record.m_Fuzz * RandomInUnitSphere(l_State);
+        vec3 l_Reflected = reflect(normalize(l_Ray.m_Direction), l_Record.m_Normal);
+        vec3 l_ScatterDir = l_Reflected + l_Record.m_Fuzz * RandomInUnitSphere(l_State);
         l_Scattered.m_Origin = l_Record.m_Point;
         l_Scattered.m_Direction = l_ScatterDir;
         l_Attenuation = l_Record.m_Albedo;
@@ -256,13 +282,13 @@ bool Scatter(Ray l_Ray, HitRecord l_Record, inout uint l_State, out float3 l_Att
     }
     else if (l_Record.m_MaterialType == MATERIAL_DIELECTRIC)
     {
-        l_Attenuation = float3(1.0f, 1.0f, 1.0f);
+        l_Attenuation = vec3(1.0f, 1.0f, 1.0f);
         float l_RefractionRatio = l_Record.m_FrontFace ? (1.0f / l_Record.m_RefIdx) : l_Record.m_RefIdx;
-        float3 l_UnitDir = normalize(l_Ray.m_Direction);
+        vec3 l_UnitDir = normalize(l_Ray.m_Direction);
         float l_CosTheta = min(dot(-l_UnitDir, l_Record.m_Normal), 1.0f);
         float l_SinTheta = sqrt(1.0f - l_CosTheta * l_CosTheta);
         bool l_CannotRefract = l_RefractionRatio * l_SinTheta > 1.0f;
-        float3 l_Direction;
+        vec3 l_Direction;
         if (l_CannotRefract || Reflectance(l_CosTheta, l_RefractionRatio) > RandomFloat(l_State))
         {
             l_Direction = reflect(l_UnitDir, l_Record.m_Normal);
@@ -277,22 +303,22 @@ bool Scatter(Ray l_Ray, HitRecord l_Record, inout uint l_State, out float3 l_Att
     }
 
     // TODO: Support additional material types
-    l_Attenuation = float3(0.0f, 0.0f, 0.0f);
+    l_Attenuation = vec3(0.0f, 0.0f, 0.0f);
     l_Scattered = l_Ray;
     return false;
 }
 
 // Iterative ray color calculation using a loop to avoid recursion.
-float3 RayColor(Ray l_Ray, inout uint l_State)
+vec3 RayColor(Ray l_Ray, inout uint l_State)
 {
-    float3 l_Attenuation = float3(1.0f, 1.0f, 1.0f);
+    vec3 l_Attenuation = vec3(1.0f, 1.0f, 1.0f);
     Ray l_CurrentRay = l_Ray;
     for (int it_Depth = 0; it_Depth < m_MaxDepth; ++it_Depth)
     {
         HitRecord l_Record;
         if (HitWorld(l_CurrentRay, l_Record))
         {
-            float3 l_StepAttenuation;
+            vec3 l_StepAttenuation;
             Ray l_Scattered;
             if (Scatter(l_CurrentRay, l_Record, l_State, l_StepAttenuation, l_Scattered))
             {
@@ -300,47 +326,49 @@ float3 RayColor(Ray l_Ray, inout uint l_State)
                 l_CurrentRay = l_Scattered;
                 continue; // Trace the scattered ray
             }
-            return float3(0.0f, 0.0f, 0.0f); // Absorb when scattering fails
+            return vec3(0.0f, 0.0f, 0.0f); // Absorb when scattering fails
         }
 
-        float3 l_UnitDirection = normalize(l_CurrentRay.m_Direction);
+        vec3 l_UnitDirection = normalize(l_CurrentRay.m_Direction);
         float l_T = 0.5f * (l_UnitDirection.y + 1.0f);
-        float3 l_Start = float3(1.0f, 1.0f, 1.0f);
-        float3 l_End = float3(0.5f, 0.7f, 1.0f);
-        float3 l_Background = lerp(l_Start, l_End, l_T);
+        vec3 l_Start = vec3(1.0f, 1.0f, 1.0f);
+        vec3 l_End = vec3(0.5f, 0.7f, 1.0f);
+        vec3 l_Background = mix(l_Start, l_End, l_T);
         return l_Attenuation * l_Background;
     }
 
-    return float3(0.0f, 0.0f, 0.0f);
+    return vec3(0.0f, 0.0f, 0.0f);
 }
 
 // --------------------------------------------------------------------------------------
 // Main compute shader entry point
 // --------------------------------------------------------------------------------------
-[numthreads(8, 8, 1)]
-void CSMain(uint3 l_DispatchThreadID : SV_DispatchThreadID)
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+void main()
 {
-    uint l_Width, l_Height;
-    g_Output.GetDimensions(l_Width, l_Height); // Query render target size
+    uvec3 l_DispatchThreadID = gl_GlobalInvocationID;
+    ivec2 l_Size = imageSize(g_Output); // Query render target size
+    int l_Width = l_Size.x;
+    int l_Height = l_Size.y;
 
     uint l_Seed = SeedFromPixel(l_DispatchThreadID.xy); // Deterministic per-pixel seed
-    float3 l_AccumColor = float3(0.0f, 0.0f, 0.0f);
+    vec3 l_AccumColor = vec3(0.0f, 0.0f, 0.0f);
 
     // Multi-sample each pixel for basic anti-aliasing.
     for (int it_Sample = 0; it_Sample < m_SamplesPerPixel; ++it_Sample)
     {
-        float2 l_Jitter = float2(RandomFloat(l_Seed), RandomFloat(l_Seed));
-        float2 l_UV = (float2(l_DispatchThreadID.xy) + l_Jitter) / float2(l_Width, l_Height);
-        float3 l_Dir = normalize(float3(l_UV * 2.0f - 1.0f, -1.0f));
+        vec2 l_Jitter = vec2(RandomFloat(l_Seed), RandomFloat(l_Seed));
+        vec2 l_UV = (vec2(l_DispatchThreadID.xy) + l_Jitter) / vec2(l_Width, l_Height);
+        vec3 l_Dir = normalize(vec3(l_UV * 2.0f - 1.0f, -1.0f));
         Ray l_Ray;
         l_Ray.m_Origin = uCameraPos;
         l_Ray.m_Direction = l_Dir;
         l_AccumColor += RayColor(l_Ray, l_Seed);
     }
 
-    float3 l_Color = l_AccumColor / m_SamplesPerPixel;
+    vec3 l_Color = l_AccumColor / m_SamplesPerPixel;
     // TODO: Consider gamma correction and tone mapping
-    g_Output[l_DispatchThreadID.xy] = float4(l_Color, 1.0f);
+    imageStore(g_Output, ivec2(l_DispatchThreadID.xy), vec4(l_Color, 1.0f));
 }
 
 // TODO: Integrate advanced sampling strategies and more material models in the future.

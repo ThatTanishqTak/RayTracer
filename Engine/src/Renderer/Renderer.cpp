@@ -117,7 +117,7 @@ namespace Engine
                 // Resolve the shader relative to the executable location.
                 // This avoids manual directory walking and prepares for a future
                 // resource manager to handle asset lookups in a central place.
-                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.hlsl";
+                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.glsl";
                 if (!std::filesystem::exists(l_ShaderPath))
                 {
                     // Fail early if the shader cannot be found to provide a clear message.
@@ -134,6 +134,7 @@ namespace Engine
                     // used because it only handles vertex/fragment pipelines, so
                     // the compute-specific rlLoadComputeShaderProgram is
                     // required here.
+                    // TODO: Introduce a cross-compiler (SPIR-V, DXC) for broader API compatibility.
                     char* l_ShaderCode = LoadFileText(l_ShaderPathStr.c_str());
                     if (l_ShaderCode == nullptr)
                     {
@@ -793,6 +794,7 @@ namespace Engine
             glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBuffer);
             glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraBuffer), &l_CameraData, GL_DYNAMIC_DRAW);
         }
+
         else
         {
             glBindBuffer(GL_UNIFORM_BUFFER, m_CameraBuffer);

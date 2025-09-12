@@ -78,7 +78,7 @@ else()
                     "${GLEW_DLL}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/glew32.dll"
             COMMENT "Copying GLEW DLL to runtime output")
     else()
-        message(WARNING "glew32.dll not found; your app may fail at runtime if it’s not on PATH.")
+        message(WARNING "glew32.dll not found; your app may fail at runtime if it's not on PATH.")
     endif()
 endif()
 
@@ -118,44 +118,44 @@ file(GLOB_RECURSE ENGINE_SOURCE
 add_library(${PROJECT_NAME} STATIC ${ENGINE_SOURCE})
 
 if(MSVC AND ENGINE_ENABLE_GPU)
-    # Locate the HLSL shader compilers. Prefer dxc when available.
-    find_program(ENGINE_DXC dxc)
-    find_program(ENGINE_FXC fxc)
+    # Try to locate a GLSL compiler. Building will still succeed if it is missing,
+    # falling back to runtime compilation by the graphics API.
+    find_program(ENGINE_GLSLANG_VALIDATOR glslangValidator)
 
     set(ENGINE_SHADER_DIR ${CMAKE_SOURCE_DIR}/Sandbox/Assets/Shaders)
-    file(GLOB ENGINE_HLSL_SHADERS ${ENGINE_SHADER_DIR}/*.hlsl)
+    file(GLOB ENGINE_GLSL_SHADERS ${ENGINE_SHADER_DIR}/*.glsl)
 
-    foreach(ENGINE_SHADER ${ENGINE_HLSL_SHADERS})
-        # Derive output name for the compiled shader object.
-        get_filename_component(ENGINE_SHADER_NAME ${ENGINE_SHADER} NAME_WE)
-        set(ENGINE_SHADER_OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders/${ENGINE_SHADER_NAME}.cso)
-
-        if(ENGINE_DXC)
-            set(ENGINE_COMPILE_CMD ${ENGINE_DXC} /T cs_6_0 /E CSMain ${ENGINE_SHADER} /Fo ${ENGINE_SHADER_OUTPUT})
-        elseif(ENGINE_FXC)
-            set(ENGINE_COMPILE_CMD ${ENGINE_FXC} /T cs_5_0 /E CSMain ${ENGINE_SHADER} /Fo ${ENGINE_SHADER_OUTPUT})
-        else()
-            message(FATAL_ERROR "Neither dxc nor fxc shader compiler was found.")
-        endif()
-
-        # Compile the shader and mark the output as a build product.
-        add_custom_command(OUTPUT ${ENGINE_SHADER_OUTPUT}
+    foreach(ENGINE_SHADER ${ENGINE_GLSL_SHADERS})
+        # Copy GLSL source to the output directory so it can be loaded at runtime.
+        get_filename_component(ENGINE_SHADER_NAME ${ENGINE_SHADER} NAME)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders
-            COMMAND ${ENGINE_COMPILE_CMD}
-            DEPENDS ${ENGINE_SHADER}
-            COMMENT "Compiling ${ENGINE_SHADER_NAME}.hlsl"
-            VERBATIM
-        )
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ENGINE_SHADER}
+                    ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders/${ENGINE_SHADER_NAME}
+            COMMENT "Copying ${ENGINE_SHADER_NAME} to output directory")
 
-        list(APPEND ENGINE_COMPILED_SHADERS ${ENGINE_SHADER_OUTPUT})
+        # If glslangValidator is available, emit SPIR-V binaries for future APIs.
+        if(ENGINE_GLSLANG_VALIDATOR)
+            get_filename_component(ENGINE_SHADER_BASENAME ${ENGINE_SHADER} NAME_WE)
+            set(ENGINE_SHADER_SPV ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders/${ENGINE_SHADER_BASENAME}.spv)
+            add_custom_command(OUTPUT ${ENGINE_SHADER_SPV}
+                COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Assets/Shaders
+                COMMAND ${ENGINE_GLSLANG_VALIDATOR} -V ${ENGINE_SHADER} -o ${ENGINE_SHADER_SPV}
+                DEPENDS ${ENGINE_SHADER}
+                COMMENT "Compiling ${ENGINE_SHADER_BASENAME}.glsl to SPIR-V")
+            list(APPEND ENGINE_COMPILED_SHADERS ${ENGINE_SHADER_SPV})
+        endif()
     endforeach()
 
     if(ENGINE_COMPILED_SHADERS)
-        # Ensure shaders are built alongside the engine and appear in Visual Studio.
         add_custom_target(EngineShaders ALL DEPENDS ${ENGINE_COMPILED_SHADERS})
         add_dependencies(${PROJECT_NAME} EngineShaders)
-        target_sources(${PROJECT_NAME} PRIVATE ${ENGINE_HLSL_SHADERS})
-        source_group("Shaders" FILES ${ENGINE_HLSL_SHADERS})
+    endif()
+
+    # Surface shader sources in the IDE for easy editing.
+    if(ENGINE_GLSL_SHADERS)
+        target_sources(${PROJECT_NAME} PRIVATE ${ENGINE_GLSL_SHADERS})
+        source_group("Shaders" FILES ${ENGINE_GLSL_SHADERS})
     endif()
 endif()
 
