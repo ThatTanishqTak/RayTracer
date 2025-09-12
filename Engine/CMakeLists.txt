@@ -8,16 +8,78 @@ option(ENGINE_ENABLE_GPU "Enable GPU ray tracing support" ON)
 add_subdirectory(vendor/raylib) # provides target: raylib
 
 # ---- GLEW ------
-set(GLEW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glew)
-add_library(glew STATIC
-    ${GLEW_DIR}/src/glew.c
+set(GLEW_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glew)
+
+# 1) Find headers
+find_path(GLEW_INCLUDE_DIR
+    NAMES GL/glew.h
+    PATHS
+      ${GLEW_ROOT}/include
+      ${GLEW_ROOT}/inc
+    NO_DEFAULT_PATH
 )
-target_include_directories(glew PUBLIC
-    ${GLEW_DIR}/include
+if(NOT GLEW_INCLUDE_DIR)
+    message(FATAL_ERROR "GLEW headers not found under ${GLEW_ROOT}. Expected GL/glew.h in include/.")
+endif()
+
+# 2) Find library (prefer static 'glew32s.lib', then 'glew32.lib')
+set(_glew_lib_candidates
+    ${GLEW_ROOT}/lib/${ARCH}
+    ${GLEW_ROOT}/lib/Release/${ARCH}
+    ${GLEW_ROOT}/lib/Debug/${ARCH}
+    ${GLEW_ROOT}/lib/${CMAKE_BUILD_TYPE}/${ARCH}
+    ${GLEW_ROOT}/lib
+    ${GLEW_ROOT}/lib/Release
+    ${GLEW_ROOT}/lib/Debug
 )
 
-if(MSVC)
-    target_compile_definitions(glew PRIVATE GLEW_STATIC)
+unset(GLEW_LIB CACHE)
+find_library(GLEW_LIB_STATIC NAMES glew32s
+    PATHS ${_glew_lib_candidates} NO_DEFAULT_PATH)
+find_library(GLEW_LIB_IMPORT NAMES glew32
+    PATHS ${_glew_lib_candidates} NO_DEFAULT_PATH)
+
+if(GLEW_LIB_STATIC)
+    set(GLEW_LIB ${GLEW_LIB_STATIC})
+    set(_glew_is_static TRUE)
+elseif(GLEW_LIB_IMPORT)
+    set(GLEW_LIB ${GLEW_LIB_IMPORT})
+    set(_glew_is_static FALSE)
+else()
+    message(FATAL_ERROR
+        "GLEW library not found. Looked for glew32s.lib or glew32.lib under:\n  ${_glew_lib_candidates}")
+endif()
+
+# 3) Declare imported target according to the variant
+if(_glew_is_static)
+    add_library(glew STATIC IMPORTED)
+    set_target_properties(glew PROPERTIES
+        IMPORTED_LOCATION "${GLEW_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${GLEW_INCLUDE_DIR}")
+    target_compile_definitions(glew INTERFACE GLEW_STATIC)
+else()
+    add_library(glew SHARED IMPORTED)
+    set_target_properties(glew PROPERTIES
+        IMPORTED_IMPLIB "${GLEW_LIB}"
+        INTERFACE_INCLUDE_DIRECTORIES "${GLEW_INCLUDE_DIR}")
+    # Try to locate the DLL to copy at runtime
+    set(_glew_bin_candidates
+        ${GLEW_ROOT}/bin/${ARCH}
+        ${GLEW_ROOT}/bin
+        ${GLEW_ROOT}/${ARCH}/bin
+        ${GLEW_ROOT}
+    )
+    unset(GLEW_DLL CACHE)
+    find_file(GLEW_DLL NAMES glew32.dll PATHS ${_glew_bin_candidates} NO_DEFAULT_PATH)
+    if(GLEW_DLL)
+        # Make the DLL show up next to your exe(s)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${GLEW_DLL}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/glew32.dll"
+            COMMENT "Copying GLEW DLL to runtime output")
+    else()
+        message(WARNING "glew32.dll not found; your app may fail at runtime if it’s not on PATH.")
+    endif()
 endif()
 
 # ---- ImGui (core) ----
