@@ -7,6 +7,19 @@ option(ENGINE_ENABLE_GPU "Enable GPU ray tracing support" ON)
 # Raylib
 add_subdirectory(vendor/raylib) # provides target: raylib
 
+# ---- GLEW ------
+set(GLEW_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glew)
+add_library(glew STATIC
+    ${GLEW_DIR}/src/glew.c
+)
+target_include_directories(glew PUBLIC
+    ${GLEW_DIR}/include
+)
+
+if(MSVC)
+    target_compile_definitions(glew PRIVATE GLEW_STATIC)
+endif()
+
 # ---- ImGui (core) ----
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui)
 add_library(imgui STATIC
@@ -97,4 +110,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     rlimgui
+    glew
 )

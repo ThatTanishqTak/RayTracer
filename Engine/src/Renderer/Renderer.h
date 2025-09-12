@@ -2,10 +2,15 @@
 
 #include "Renderer/CameraController.h"
 
+// Include the OpenGL loader before raylib to expose GLsync and related enums.
+// OpenGL 3.2+ is required for synchronization objects.
+#include <GL/glew.h>
 #include <raylib.h>
 #ifdef ENGINE_ENABLE_GPU
 #include <rlgl.h>
 #endif
+
+// Future improvement: abstract this header to support Vulkan or DirectX backends.
 
 #include <vector>
 #include <thread>
@@ -118,7 +123,7 @@ namespace Engine
         std::atomic<int> m_TilesCompleted{ 0 };          ///Tiles completed by worker threads.
         bool m_GpuDispatched{ false };                   ///Tracks whether a GPU dispatch occurred to distinguish unstarted renders.
 #ifdef ENGINE_ENABLE_GPU
-        GLsync m_GpuFence{ nullptr };                    ///Fence used to synchronize CPU with GPU completion.
+        GLsync m_GpuFence{ nullptr };                    ///Fence used to synchronize CPU with GPU completion. Requires OpenGL 3.2+.
         bool m_GpuCompleted{ false };                    ///True once the GPU has finished writing to the render texture.
         bool m_GpuCompletionNotified{ false };           ///Ensures the final frame is blitted before m_IsRendering flips.
 #endif

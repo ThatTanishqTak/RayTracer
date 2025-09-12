@@ -55,7 +55,7 @@ void SandboxLayer::OnAttach()
     std::shared_ptr<Engine::Material> l_GlassMaterial = std::make_shared<Engine::Dielectric>(1.5f);
 
     // Create spheres with the materials defined above.
-    Engine::Sphere l_GroundSphere{ Vector3{ 0.0f, -100.5f, -1.0f }, 100.0f, l_GroundMaterial }; // Large sphere acting as a ground plane
+    Engine::Sphere l_GroundSphere{ Vector3{ 0.0f, -100.5f, -1.0f }, 100.0f, l_GroundMaterial };  // Large sphere acting as a ground plane
     Engine::Sphere l_CenterSphere{ Vector3{ 0.0f, 0.0f, -1.0f }, 0.5f, l_CenterMaterial };       // Central Lambertian sphere
     Engine::Sphere l_LeftSphere{ Vector3{ -1.0f, 0.0f, -1.0f }, 0.5f, l_GlassMaterial };         // Left sphere with glass material
     Engine::Sphere l_RightSphere{ Vector3{ 1.0f, 0.0f, -1.0f }, 0.5f, l_MetalMaterial };         // Right sphere with metal material

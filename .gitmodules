@@ -11,6 +11,3 @@
 [submodule "Engine/vendor/stb"]
 	path = Engine/vendor/stb
 	url = https://github.com/ThatTanishqTak/stb.git
-[submodule "Engine/vendor/glew"]
-	path = Engine/vendor/glew
-	url = https://github.com/ThatTanishqTak/glew.git

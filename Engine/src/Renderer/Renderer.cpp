@@ -6,12 +6,17 @@
 #include "Tracer/RayTracer.h"
 #include "Tracer/GPUPrimitives.h"
 
+// Include GLEW before raylib to ensure GLsync and sync enums are available.
+// Requires OpenGL 3.2+ for synchronization objects.
+#include <GL/glew.h>
 #include <raylib.h>
 #include <raymath.h>
 #include <rlImGui.h>
 #ifdef ENGINE_ENABLE_GPU
 #include <rlgl.h>
 #endif
+
+// Future improvement: transition to cross-platform APIs like Vulkan or DirectX.
 
 #include <algorithm>
 #include <chrono>
@@ -36,6 +41,18 @@ namespace Engine
         RAY_CORE_TRACE("Initializing the renderer");
 
         bool l_Result = true; // Track overall initialization success
+
+        // Load OpenGL function pointers. Must occur after the context is created.
+        if (l_Result)
+        {
+            GLenum l_GlewErr = glewInit();
+            if (l_GlewErr != GLEW_OK)
+            {
+                RAY_CORE_ERROR("Failed to initialize GLEW: {}", reinterpret_cast<const char*>(glewGetErrorString(l_GlewErr)));
+
+                l_Result = false;
+            }
+        }
 
 #ifndef ENGINE_ENABLE_GPU
         // Ensure CPU path is active when the engine is built without GPU support.
