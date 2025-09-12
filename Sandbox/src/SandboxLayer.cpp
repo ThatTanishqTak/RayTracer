@@ -54,6 +54,9 @@ void SandboxLayer::OnAttach()
     // Glass-like sphere demonstrating refraction.
     std::shared_ptr<Engine::Material> l_GlassMaterial = std::make_shared<Engine::Dielectric>(1.5f);
 
+    // Emissive sphere acting as a simple light source.
+    std::shared_ptr<Engine::Material> l_LightMaterial = std::make_shared<Engine::Emissive>(Vector3{ 4.0f, 4.0f, 4.0f });
+
     // Create spheres with the materials defined above.
     Engine::Sphere l_GroundSphere{ Vector3{ 0.0f, -100.5f, -1.0f }, 100.0f, l_GroundMaterial };  // Large sphere acting as a ground plane
     Engine::Sphere l_CenterSphere{ Vector3{ 0.0f, 0.0f, -1.0f }, 0.5f, l_CenterMaterial };       // Central Lambertian sphere
@@ -64,6 +67,7 @@ void SandboxLayer::OnAttach()
     m_Scene.AddSphere(l_CenterSphere);
     m_Scene.AddSphere(l_LeftSphere);
     m_Scene.AddSphere(l_RightSphere);
+    m_Scene.AddSphere(l_LightSphere);
 }
 
 void SandboxLayer::OnDetach()

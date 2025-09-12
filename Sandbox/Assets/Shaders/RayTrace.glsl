@@ -23,14 +23,18 @@ float m_Padding; // Padding for std140 alignment
 const uint MATERIAL_LAMBERTIAN = 0;
 const uint MATERIAL_METAL = 1;
 const uint MATERIAL_DIELECTRIC = 2;
+const uint MATERIAL_EMISSIVE = 3; // Light-emitting surface
 
 // Plain-old-data material used by the GPU.
 struct MaterialGPU
 {
     vec3 m_Albedo; // Base color
     float m_Fuzz; // Metal fuzziness
+    vec3 m_Emission; // Emissive radiance
     float m_RefIdx; // Index of refraction
     uint m_Type; // Material type selector
+    vec3 m_Padding; // Alignment padding
+    // TODO: Optimize packing once material parameters stabilize
 };
 
 // GPU representation of a sphere primitive.
@@ -68,26 +72,43 @@ struct HitRecord
     uint m_MaterialType; // Material selector
     vec3 m_Albedo; // Surface color for shading
     float m_Fuzz; // Metal fuzziness
+    vec3 m_Emission; // Emissive radiance
     float m_RefIdx; // Refractive index
 };
+
+// Helper used to create a zero-initialized hit record without relying on casts.
+HitRecord CreateEmptyHitRecord()
+{
+    // All fields are explicitly set to zero or equivalent defaults so the
+    // caller starts from a known state.
+    return HitRecord(
+        vec3(0.0f),           // m_Point
+        vec3(0.0f),           // m_Normal
+        0.0f,                 // m_Target
+        false,                // m_FrontFace
+        0u,                   // m_MaterialType
+        vec3(0.0f),           // m_Albedo
+        0.0f,                 // m_Fuzz
+        0.0f);                // m_RefIdx
+}
 
 // Structured buffers become shader storage buffers in GLSL.
 layout(std430, binding = 0)
 buffer NodesBuffer
 {
-    BVHFlatNodeg_Nodes[]; // Flattened BVH nodes
+    BVHFlatNode g_Nodes[]; // Flattened BVH nodes
 };
 
 layout(std430, binding = 1)
 buffer SpheresBuffer
 {
-    Sphereg_Spheres[]; // Primitive data
+    Sphere g_Spheres[]; // Primitive data
 };
 
 layout(std430, binding = 2)
 buffer MaterialsBuffer
 {
-    MaterialGPUg_Materials[]; // Material parameters
+    MaterialGPU g_Materials[]; // Material parameters
 };
 
 // UAV in HLSL translates to an image in GLSL. Uses rgba32f to match float4.
@@ -175,7 +196,10 @@ bool HitAABB(vec3 l_Min, vec3 l_Max, Ray l_Ray, float l_tMin, float l_tMax)
 
 bool HitSphere(Ray l_Ray, Sphere l_Sphere, float l_tMin, float l_tMax, out HitRecord l_Record)
 {
-    l_Record = (HitRecord) 0;
+    // Initialize the output record to a known zero state instead of casting
+    // an integer literal. This prevents GPU compilers from flagging a type
+    // mismatch and keeps the fields predictable.
+    l_Record = CreateEmptyHitRecord();
 
     vec3 l_OC = l_Ray.m_Origin - l_Sphere.m_Center;
     float l_A = dot(l_Ray.m_Direction, l_Ray.m_Direction);
@@ -208,6 +232,7 @@ bool HitSphere(Ray l_Ray, Sphere l_Sphere, float l_tMin, float l_tMax, out HitRe
     l_Record.m_MaterialType = l_Mat.m_Type;
     l_Record.m_Albedo = l_Mat.m_Albedo;
     l_Record.m_Fuzz = l_Mat.m_Fuzz;
+    l_Record.m_Emission = l_Mat.m_Emission;
     l_Record.m_RefIdx = l_Mat.m_RefIdx;
 
     return true;
@@ -216,7 +241,9 @@ bool HitSphere(Ray l_Ray, Sphere l_Sphere, float l_tMin, float l_tMax, out HitRe
 // Traverse the flattened BVH to locate the closest intersection.
 bool HitWorld(Ray l_Ray, out HitRecord l_Record)
 {
-    l_Record = (HitRecord) 0;
+    // Clear the hit record so traversal starts with no prior hit data.
+    l_Record = CreateEmptyHitRecord();
+
     bool l_Hit = false;
     float l_Closest = 1e30f;
 
@@ -302,7 +329,13 @@ bool Scatter(Ray l_Ray, HitRecord l_Record, inout uint l_State, out vec3 l_Atten
         return true;
     }
 
-    // TODO: Support additional material types
+    else if (l_Record.m_MaterialType == MATERIAL_EMISSIVE)
+    {
+        l_Attenuation = l_Record.m_Emission; // Return emission and terminate
+        return false;
+    }
+
+    // TODO: Add more sophisticated materials (e.g., subsurface, glossy).
     l_Attenuation = vec3(0.0f, 0.0f, 0.0f);
     l_Scattered = l_Ray;
     return false;
@@ -326,7 +359,7 @@ vec3 RayColor(Ray l_Ray, inout uint l_State)
                 l_CurrentRay = l_Scattered;
                 continue; // Trace the scattered ray
             }
-            return vec3(0.0f, 0.0f, 0.0f); // Absorb when scattering fails
+            return l_Attenuation * l_StepAttenuation; // Terminate with emission or absorption
         }
 
         vec3 l_UnitDirection = normalize(l_CurrentRay.m_Direction);
@@ -367,8 +400,12 @@ void main()
     }
 
     vec3 l_Color = l_AccumColor / m_SamplesPerPixel;
-    // TODO: Consider gamma correction and tone mapping
-    imageStore(g_Output, ivec2(l_DispatchThreadID.xy), vec4(l_Color, 1.0f));
+    // Apply simple Reinhard tone mapping to compress HDR values.
+    vec3 l_ToneMapped = l_Color / (l_Color + vec3(1.0f));
+    // Gamma correction approximating an sRGB display response.
+    vec3 l_Gamma = pow(l_ToneMapped, vec3(1.0f / 2.2f));
+    imageStore(g_Output, ivec2(l_DispatchThreadID.xy), vec4(l_Gamma, 1.0f));
+    // TODO: Expose tone-mapping parameters for artistic control.
 }
 
 // TODO: Integrate advanced sampling strategies and more material models in the future.

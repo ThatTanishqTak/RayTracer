@@ -131,6 +131,7 @@ namespace Engine
             {
                 l_GpuMaterial.m_Albedo = l_Material->GetAlbedo();
                 l_GpuMaterial.m_Fuzz = l_Material->GetFuzz();
+                l_GpuMaterial.m_Emission = l_Material->GetEmission();
                 l_GpuMaterial.m_RefIdx = l_Material->GetIOR();
                 l_GpuMaterial.m_Type = static_cast<std::uint32_t>(l_Material->GetType());
             }

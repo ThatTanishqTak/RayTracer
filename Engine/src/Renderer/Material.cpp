@@ -126,4 +126,18 @@ namespace Engine
 
         return l_Result;
     }
+
+    Emissive::Emissive(Vector3 emission) : m_Emission(emission)
+    {
+        // Store emission color; does not scatter incoming light.
+    }
+
+    bool Emissive::Scatter(const Ray& rayIn, const HitRecord& hitRecord, Vector3& attenuation, Ray& scattered) const
+    {
+        (void)rayIn;
+        (void)hitRecord;
+        (void)scattered;
+        attenuation = m_Emission; // Return emitted radiance.
+        return false; // No scattering; ray terminates.
+    }
 }

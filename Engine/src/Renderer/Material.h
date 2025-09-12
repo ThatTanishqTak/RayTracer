@@ -16,7 +16,8 @@ namespace Engine
     {
         Lambertian = 0, ///< Diffuse surface.
         Metal = 1,      ///< Reflective metal.
-        Dielectric = 2  ///< Refractive surface.
+        Dielectric = 2, ///< Refractive surface.
+        Emissive = 3    ///< Light-emitting surface.
     };
 
 
@@ -35,6 +36,7 @@ namespace Engine
         virtual Vector3 GetAlbedo() const { return { 0.0f, 0.0f, 0.0f }; }
         virtual float GetFuzz() const { return 0.0f; }
         virtual float GetIOR() const { return 1.0f; }
+        virtual Vector3 GetEmission() const { return { 0.0f, 0.0f, 0.0f }; }
         virtual MaterialType GetType() const = 0;
     };
 
@@ -82,5 +84,18 @@ namespace Engine
 
         /**\brief Helper computing reflection probability using Schlick's approximation.*/
         static float Reflectance(float cosine, float refIdx);
+    };
+
+    /**\brief Material that emits light and does not scatter incoming rays.*/
+    class Emissive : public Material
+    {
+    public:
+        explicit Emissive(Vector3 emission);
+        virtual bool Scatter(const Ray& rayIn, const HitRecord& hitRecord, Vector3& attenuation, Ray& scattered) const override;
+        virtual Vector3 GetEmission() const override { return m_Emission; }
+        virtual MaterialType GetType() const override { return MaterialType::Emissive; }
+
+    private:
+        Vector3 m_Emission{}; ///< Radiance emitted by the surface.
     };
 }

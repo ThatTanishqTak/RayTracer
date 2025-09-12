@@ -13,8 +13,11 @@ namespace Engine
     {
         Vector3 m_Albedo{};       ///< Base color of the surface.
         float m_Fuzz{};           ///< Surface roughness for metal materials.
+        Vector3 m_Emission{};     ///< Emissive color for light sources.
         float m_RefIdx{};         ///< Index of refraction for dielectrics.
         std::uint32_t m_Type{};   ///< Material type selector.
+        Vector3 m_Padding{};      ///< Padding for 16-byte alignment.
+        // TODO: Pack parameters more tightly once GPU layout is refactored.
     };
 
     /**
