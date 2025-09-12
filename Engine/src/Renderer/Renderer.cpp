@@ -660,6 +660,16 @@ namespace Engine
         }
     }
 
+    std::vector<RenderStep> Renderer::GetRenderSteps() const
+    {
+        // Return a thread-safe copy of the recorded render steps.
+        std::scoped_lock l_Lock(m_StepsMutex);
+        std::vector<RenderStep> l_Copy = m_Steps;
+
+        // Future improvement: expose a non-owning view to avoid the copy overhead.
+        return l_Copy;
+    }
+
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
     void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
     {
