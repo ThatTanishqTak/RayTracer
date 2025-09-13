@@ -120,7 +120,7 @@ namespace Engine
                 // is explicit and build scripts can glob for any stage.
                 // This avoids manual directory walking and prepares for a future
                 // resource manager to handle asset lookups in a central place.
-                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.comp.glsl";
+                std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.glsl";
                 if (!std::filesystem::exists(l_ShaderPath))
                 {
                     // Fail early if the shader cannot be found to provide a clear message.
@@ -240,6 +240,13 @@ namespace Engine
         {
             glDeleteBuffers(1, &m_CameraBuffer);
             m_CameraBuffer = 0;
+        }
+
+        // Release uniform buffer storing per-frame trace parameters.
+        if (m_TraceParamsBuffer != 0)
+        {
+            glDeleteBuffers(1, &m_TraceParamsBuffer);
+            m_TraceParamsBuffer = 0;
         }
 #endif
 
@@ -923,13 +930,22 @@ namespace Engine
 
         struct TraceParams
         {
-            int m_MaxDepth;
-            int m_SamplesPerPixel;
+            int m_MaxDepth;        ///< Maximum recursion depth for rays.
+            int m_SamplesPerPixel; ///< Jittered samples per pixel.
         };
 
         TraceParams l_Params{ m_MaxDepth, m_SamplesPerPixel };
-        int l_ParamsLoc = GetShaderLocation(m_GpuPipeline, "uParams");
-        SetShaderValue(m_GpuPipeline, l_ParamsLoc, &l_Params, SHADER_UNIFORM_IVEC2);
+
+        // Upload trace parameters through a uniform buffer bound to slot 0.
+        // Future improvement: expand this block with additional per-frame values.
+        if (m_TraceParamsBuffer == 0)
+        {
+            glGenBuffers(1, &m_TraceParamsBuffer);
+        }
+        glBindBuffer(GL_UNIFORM_BUFFER, m_TraceParamsBuffer);
+        glBufferData(GL_UNIFORM_BUFFER, sizeof(TraceParams), &l_Params, GL_DYNAMIC_DRAW);
+        glBindBufferBase(GL_UNIFORM_BUFFER, 0, m_TraceParamsBuffer);
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         // Bind the render texture as an image (UAV) so the compute shader can write
         // the final color directly. This avoids an intermediate CPU copy and keeps

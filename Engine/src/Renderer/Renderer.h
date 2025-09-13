@@ -183,6 +183,7 @@ namespace Engine
         unsigned int m_PrimitiveBuffer{ 0 }; ///< GPU buffer containing scene primitives.
         unsigned int m_MaterialBuffer{ 0 };  ///< GPU buffer containing material parameters.
         unsigned int m_CameraBuffer{ 0 };    ///< Uniform buffer with camera position.
+        unsigned int m_TraceParamsBuffer{ 0 }; ///< Uniform buffer storing trace parameters like depth and sample count. Future improvement: expand with more per-frame parameters.
         unsigned int m_GpuTimeQuery{ 0 };    ///< OpenGL query tracking GPU time for the dispatch.
         int m_GpuDispatchStepIndex{ -1 };    ///< Index into m_Steps for the GPU dispatch record.
 #endif

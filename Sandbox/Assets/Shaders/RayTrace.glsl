@@ -347,7 +347,8 @@ vec3 RayColor(Ray l_Ray, inout uint l_State)
 {
     vec3 l_Attenuation = vec3(1.0f, 1.0f, 1.0f);
     Ray l_CurrentRay = l_Ray;
-    for (int it_Depth = 0; it_Depth < m_MaxDepth; ++it_Depth)
+    // Respect the configured recursion limit supplied by the CPU via uParams.
+    for (int it_Depth = 0; it_Depth < uParams.m_MaxDepth; ++it_Depth)
     {
         HitRecord l_Record;
         if (HitWorld(l_CurrentRay, l_Record))
@@ -389,7 +390,8 @@ void main()
     vec3 l_AccumColor = vec3(0.0f, 0.0f, 0.0f);
 
     // Multi-sample each pixel for basic anti-aliasing.
-    for (int it_Sample = 0; it_Sample < m_SamplesPerPixel; ++it_Sample)
+    // Jitter multiple samples per pixel as instructed by uParams.
+    for (int it_Sample = 0; it_Sample < uParams.m_SamplesPerPixel; ++it_Sample)
     {
         vec2 l_Jitter = vec2(RandomFloat(l_Seed), RandomFloat(l_Seed));
         vec2 l_UV = (vec2(l_DispatchThreadID.xy) + l_Jitter) / vec2(l_Width, l_Height);
@@ -400,7 +402,8 @@ void main()
         l_AccumColor += RayColor(l_Ray, l_Seed);
     }
 
-    vec3 l_Color = l_AccumColor / m_SamplesPerPixel;
+    // Average the accumulated color by the total samples per pixel from uParams.
+    vec3 l_Color = l_AccumColor / uParams.m_SamplesPerPixel;
     // Apply simple Reinhard tone mapping to compress HDR values.
     vec3 l_ToneMapped = l_Color / (l_Color + vec3(1.0f));
     // Gamma correction approximating an sRGB display response.
