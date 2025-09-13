@@ -38,7 +38,7 @@ void SandboxLayer::OnAttach()
 {
     // Ensure the renderer operates in CPU mode. Future improvement: expose GPU
     // acceleration when available.
-    m_Renderer.SetRenderMode(Engine::Renderer::RenderMode::RayTrace);
+    m_Renderer.SetRenderMode(Engine::Renderer::RenderMode::RayTraceGPU);
 
     // Set up a basic scene with diverse materials.
 
@@ -97,17 +97,12 @@ void SandboxLayer::OnUpdate(float deltaTime)
     // Query current progress from the renderer every frame.
     m_RenderProgress = m_Renderer.GetProgress();
 
-    // When rendering is finished, sum each step's time to compute total.
+    // When rendering is finished, record the total time reported by the renderer.
     if (!m_Renderer.IsRendering() && m_RenderProgress >= 1.0f)
     {
-        std::vector<Engine::RenderStep> l_Steps = m_Renderer.GetRenderSteps();
-        float l_TotalMs = 0.0f; // Accumulated elapsed time for all steps
-        for (const Engine::RenderStep& it_Step : l_Steps)
-        {
-            l_TotalMs += it_Step.m_ElapsedMs;
-        }
-    
-        m_RenderTime = l_TotalMs;
+        // Value currently aggregates CPU and GPU stages. Future improvement:
+        // expose per-tile or per-stage timings for deeper insights.
+        m_RenderTime = static_cast<float>(m_Renderer.GetRenderDurationMs());
     }
 }
 

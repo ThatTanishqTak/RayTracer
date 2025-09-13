@@ -642,6 +642,7 @@ namespace Engine
 
     float Renderer::GetProgress()
     {
+        // GPU path: rely on synchronization objects to indicate completion.
         if (m_RenderMode == RenderMode::RayTraceGPU)
         {
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
@@ -697,6 +698,27 @@ namespace Engine
             return 0.0f;
 #endif
         }
+
+        // CPU path: compute progress as the ratio of completed tiles.
+        float l_Progress = 0.0f;
+        if (m_TotalTiles > 0)
+        {
+            // Calculate how many tiles have finished rendering.
+            l_Progress = static_cast<float>(m_TilesCompleted.load()) / static_cast<float>(m_TotalTiles);
+        }
+
+        // Clamp progress to the valid range to protect against invalid counts.
+        l_Progress = std::clamp(l_Progress, 0.0f, 1.0f);
+
+        // TODO: investigate hybrid CPU/GPU strategies and unified progress reporting.
+        return l_Progress;
+    }
+
+    double Renderer::GetRenderDurationMs() const
+    {
+        // Provides the aggregate render duration measured across CPU and GPU
+        // stages. Future improvement: expose granular per-stage timings.
+        return m_RenderDurationMs;
     }
 
     std::vector<RenderStep> Renderer::GetRenderSteps() const

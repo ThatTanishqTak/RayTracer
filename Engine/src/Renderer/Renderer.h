@@ -106,6 +106,13 @@ namespace Engine
         float GetProgress();
         /**\brief Retrieve a thread-safe snapshot of recorded render steps.*/
         std::vector<RenderStep> GetRenderSteps() const;
+        /**\brief Total time in milliseconds of the most recent render.
+         * Includes time spent in both CPU and GPU stages and serves as a
+         * high-level summary of render cost.
+         * Future improvement: expose per-tile or per-stage breakdowns for
+         * deeper analysis.
+         */
+        double GetRenderDurationMs() const;
 
     private:
         CameraController m_CameraController{}; ///Centralized camera controller for input.
@@ -142,7 +149,7 @@ namespace Engine
         mutable std::mutex m_StepsMutex;                 ///Protects access to m_Steps for thread safety.
         std::chrono::high_resolution_clock::time_point m_RenderStart{}; ///<Absolute start time of the render.
         std::chrono::high_resolution_clock::time_point m_TileProcessingStart{}; ///<Start time for tile processing.
-        double m_RenderDurationMs{ 0.0 };                ///Total duration of the last render in milliseconds.
+        double m_RenderDurationMs{ 0.0 };                ///Total duration of the last render in milliseconds covering CPU and GPU stages.
         std::atomic<int> m_WorkersFinished{ 0 };         ///Number of workers that finished tracing.
         int m_MaxDepth{ 50 };                           ///Maximum recursion depth for ray tracing.
         ///TODO: expose via user configuration.
