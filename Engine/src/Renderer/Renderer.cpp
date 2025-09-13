@@ -302,7 +302,8 @@ namespace Engine
         }
 
         // Create a new render texture; this enables potential direct drawing without
-        // CPU-GPU copy.
+        // CPU-GPU copy. Reallocate the color attachment as a 32-bit floating point
+        // texture to preserve high dynamic range precision across the pipeline.
         RenderTexture2D l_NewTexture = LoadRenderTexture(width, height);
         if (l_NewTexture.id == 0)
         {
@@ -317,6 +318,15 @@ namespace Engine
 
             return false;
         }
+
+        // Replace the default 8-bit attachment with a 32-bit float surface. This
+         // allows the compute shader to emit unclamped HDR values without precision
+         // loss. Future improvement: expose other HDR formats or negotiate the
+         // format based on hardware capabilities.
+        glBindTexture(GL_TEXTURE_2D, l_NewTexture.texture.id);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, nullptr);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        l_NewTexture.texture.format = PIXELFORMAT_UNCOMPRESSED_R32G32B32A32;
 
         m_RenderTexture = l_NewTexture;
         m_FrameWidth = width;
@@ -948,9 +958,10 @@ namespace Engine
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         // Bind the render texture as an image (UAV) so the compute shader can write
-        // the final color directly. This avoids an intermediate CPU copy and keeps
-        // the entire ray tracing pass on the GPU.
-        rlBindImageTexture(m_RenderTexture.texture.id, 0, m_RenderTexture.texture.format, false);
+        // the final color directly. Explicitly specify GL_RGBA32F to match the
+        // allocation in ResizeFrameTexture. This avoids an intermediate CPU copy and
+        // keeps the entire ray tracing pass on the GPU.
+        rlBindImageTexture(m_RenderTexture.texture.id, 0, GL_RGBA32F, false);
 
         // Measure GPU execution time of the compute dispatch.
         unsigned int l_QueryId = 0;
