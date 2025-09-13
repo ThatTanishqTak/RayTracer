@@ -524,7 +524,7 @@ namespace Engine
             }
 
             std::chrono::high_resolution_clock::time_point l_DispatchStart = l_SceneEnd;
-            double l_GpuDispatchMs = DispatchGPU(scene, camera);
+            DispatchGPU(scene, camera);
             m_GpuDispatched = true; // Mark that the GPU path executed
             // Insert a fence so the CPU can later query when the GPU work is finished.
             m_GpuFence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
@@ -533,7 +533,8 @@ namespace Engine
             double l_DispatchMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - l_DispatchStart).count();
             {
                 std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
-                m_Steps.push_back(RenderStep{ "GPU Dispatch", l_DispatchMs, l_GpuDispatchMs });
+                m_GpuDispatchStepIndex = static_cast<int>(m_Steps.size());
+                m_Steps.push_back(RenderStep{ "GPU Dispatch", l_DispatchMs, 0.0 });
             }
             m_RenderDurationMs = std::chrono::duration<double, std::milli>(l_DispatchEnd - m_RenderStart).count();
 #endif
@@ -654,6 +655,28 @@ namespace Engine
                 {
                     glDeleteSync(m_GpuFence);
                     m_GpuFence = nullptr;
+
+                    // Retrieve GPU timing now that the fence guarantees completion.
+                    unsigned long long l_TimeNs = 0;
+                    if (m_GpuTimeQuery != 0)
+                    {
+                        glGetQueryObjectui64v(m_GpuTimeQuery, GL_QUERY_RESULT, &l_TimeNs);
+                        // Future improvement: consider GL_QUERY_RESULT_NO_WAIT to avoid even
+                        // the minimal wait this call may introduce.
+                        glDeleteQueries(1, &m_GpuTimeQuery);
+                        m_GpuTimeQuery = 0;
+                        double l_GpuMs = static_cast<double>(l_TimeNs) / 1000000.0;
+                        {
+                            std::lock_guard<std::mutex> l_Lock(m_StepsMutex);
+                            if (m_GpuDispatchStepIndex >= 0 &&
+                                m_GpuDispatchStepIndex < static_cast<int>(m_Steps.size()))
+                            {
+                                m_Steps[m_GpuDispatchStepIndex].m_GpuElapsedMs = l_GpuMs;
+                            }
+                        }
+                        m_GpuDispatchStepIndex = -1;
+                    }
+
                     // Read back the texture so GetFrame() exposes the GPU result.
                     // Future improvement: perform this read-back asynchronously to
                     // avoid stalling the main thread on large frames.
@@ -732,12 +755,12 @@ namespace Engine
     }
 
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
-    double Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
+    void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
     {
         if (m_GpuPipeline.id == 0)
         {
             // Future improvement: lazily create the compute pipeline here.
-            return 0.0;
+            return;
         }
 
         // Upload flattened BVH nodes and primitives to shader storage buffers.
@@ -862,16 +885,18 @@ namespace Engine
         // synchronization.
 
         glEndQuery(GL_TIME_ELAPSED);
-        unsigned long long l_TimeNs = 0;
-        glGetQueryObjectui64v(l_QueryId, GL_QUERY_RESULT, &l_TimeNs);
-        glDeleteQueries(1, &l_QueryId);
-        double l_GpuMs = static_cast<double>(l_TimeNs) / 1000000.0;
+        glEndQuery(GL_TIME_ELAPSED);
+
+        // Defer glGetQueryObjectui64v until the GPU work completes to avoid
+        // blocking the CPU here. The query result will be retrieved in
+        // GetProgress once the fence signals completion.
+        m_GpuTimeQuery = l_QueryId;
 
         // The result now lives in m_RenderTexture and can be presented directly.
         // Future improvement: read back into m_Framebuffer for CPU-side effects or
         // dispatch the compute shader asynchronously and in smaller tiles.
 
-        return l_GpuMs;
+        return;
     }
 #endif
 

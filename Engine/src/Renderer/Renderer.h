@@ -170,13 +170,15 @@ namespace Engine
         /**\brief Upload per-frame parameters and dispatch the GPU compute shader.
          * Future improvement: move parameter packing into a dedicated constant buffer structure.
          */
-        double DispatchGPU(const Scene& scene, const Camera& camera);
+        void DispatchGPU(const Scene& scene, const Camera& camera);
 
         Shader m_GpuPipeline{ 0 }; ///< Compute shader pipeline used during RenderMode::RayTraceGPU.
         unsigned int m_NodeBuffer{ 0 };      ///< GPU buffer containing flattened BVH nodes.
         unsigned int m_PrimitiveBuffer{ 0 }; ///< GPU buffer containing scene primitives.
         unsigned int m_MaterialBuffer{ 0 };  ///< GPU buffer containing material parameters.
         unsigned int m_CameraBuffer{ 0 };    ///< Uniform buffer with camera position.
+        unsigned int m_GpuTimeQuery{ 0 };    ///< OpenGL query tracking GPU time for the dispatch.
+        int m_GpuDispatchStepIndex{ -1 };    ///< Index into m_Steps for the GPU dispatch record.
 #endif
     };
 }
