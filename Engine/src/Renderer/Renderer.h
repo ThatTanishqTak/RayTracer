@@ -167,6 +167,12 @@ namespace Engine
         static std::string GetShaderLog(unsigned int shaderId);
 
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
+        /**\brief Build the compute pipeline on-demand.
+         * The pipeline is compiled and linked the first time it is required and then cached.
+         * \return True on success, false when compilation or linking fails.
+         */
+        bool BuildGpuPipeline();
+
         /**\brief Upload per-frame parameters and dispatch the GPU compute shader.
          * Future improvement: move parameter packing into a dedicated constant buffer structure.
          */

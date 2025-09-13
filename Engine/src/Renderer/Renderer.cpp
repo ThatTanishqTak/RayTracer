@@ -755,11 +755,81 @@ namespace Engine
     }
 
 #ifdef ENGINE_GPU_COMPUTE_AVAILABLE
+    bool Renderer::BuildGpuPipeline()
+    {
+        if (m_GpuPipeline.id != 0)
+        {
+            // Pipeline already compiled and ready for reuse.
+            return true;
+        }
+
+        // Verify that the platform supports compute shaders at runtime.
+        if (rlGetVersion() < RL_OPENGL_43)
+        {
+            const GLubyte* l_VendorBytes = glGetString(GL_VENDOR);
+            const GLubyte* l_RendererBytes = glGetString(GL_RENDERER);
+            const GLubyte* l_DriverBytes = glGetString(GL_VERSION);
+            const char* l_Vendor = l_VendorBytes ? reinterpret_cast<const char*>(l_VendorBytes) : "Unknown";
+            const char* l_Renderer = l_RendererBytes ? reinterpret_cast<const char*>(l_RendererBytes) : "Unknown";
+            const char* l_Driver = l_DriverBytes ? reinterpret_cast<const char*>(l_DriverBytes) : "Unknown";
+
+            RAY_CORE_WARNING("Compute shaders unsupported; defaulting to CPU ray tracing | GPU Vendor: {} | GPU Renderer: {} | Driver Version: {}. Consider updating GPU drivers or verifying hardware support.",
+                l_Vendor, l_Renderer, l_Driver);
+
+            return false;
+        }
+
+        // Resolve and validate the compute shader path relative to the executable.
+        std::filesystem::path l_ShaderPath = std::filesystem::path(GetApplicationDirectory()) / "Assets/Shaders/RayTrace.comp.glsl";
+        if (!std::filesystem::exists(l_ShaderPath))
+        {
+            RAY_CORE_ERROR("Compute shader not found: {}", l_ShaderPath.string());
+
+            return false;
+        }
+
+        std::string l_ShaderPathStr = l_ShaderPath.string();
+        char* l_ShaderCode = LoadFileText(l_ShaderPathStr.c_str());
+        if (l_ShaderCode == nullptr)
+        {
+            RAY_CORE_ERROR("Failed to read compute shader: {}", l_ShaderPathStr);
+
+            return false;
+        }
+
+        unsigned int l_ShaderId = rlCompileShader(l_ShaderCode, RL_COMPUTE_SHADER);
+        const std::string l_ShaderLog = GetShaderLog(l_ShaderId);
+        UnloadFileText(l_ShaderCode);
+
+        if (l_ShaderId == 0)
+        {
+            RAY_CORE_ERROR("Failed to compile compute shader: {}\n{}", l_ShaderPathStr, l_ShaderLog);
+
+            return false;
+        }
+
+        unsigned int l_ProgramId = rlLoadComputeShaderProgram(l_ShaderId);
+        if (l_ProgramId == 0)
+        {
+            RAY_CORE_ERROR("Failed to link compute shader program: {}", l_ShaderPathStr);
+
+            return false;
+        }
+
+        m_GpuPipeline.id = l_ProgramId;
+        m_GpuPipeline.locs = nullptr;
+
+        return true;
+    }
+
     void Renderer::DispatchGPU(const Scene& scene, const Camera& camera)
     {
-        if (m_GpuPipeline.id == 0)
+        if (!BuildGpuPipeline())
         {
-            // Future improvement: lazily create the compute pipeline here.
+            // Abort GPU dispatch and revert to the CPU path when the pipeline is unavailable.
+            RAY_CORE_ERROR("GPU pipeline unavailable; falling back to CPU ray tracing");
+            SetRenderMode(RenderMode::RayTrace);
+
             return;
         }
 
@@ -884,7 +954,6 @@ namespace Engine
         // Future improvement: wrap this in an engine utility to centralize GPU
         // synchronization.
 
-        glEndQuery(GL_TIME_ELAPSED);
         glEndQuery(GL_TIME_ELAPSED);
 
         // Defer glGetQueryObjectui64v until the GPU work completes to avoid
