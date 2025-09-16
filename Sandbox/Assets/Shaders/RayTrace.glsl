@@ -1,4 +1,4 @@
-#version 450
+#version 430
 // Converted from HLSL to GLSL for OpenGL/Vulkan style compute pipelines.
 // Resource bindings mirror original HLSL register assignments for clarity.
 // Future enhancement: add cross-compilation to support SPIR-V or DXC paths.
